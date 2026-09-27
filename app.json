@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Mining Flow",
+    "slug": "mining-flow",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "miningflow",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#1C1F24",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.miningflow.game"
+    },
+    "android": {
+      "package": "com.miningflow.game"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}
