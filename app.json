@@ -1,27 +1,37 @@
 {
   "expo": {
-    "name": "Mining Flow",
-    "slug": "mining-flow",
+    "name": "Mining Puzzle Game",
+    "slug": "mining-puzzle-game",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "miningflow",
+    "scheme": "miningpuzzlegame",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "backgroundColor": "#1C1F24",
-      "resizeMode": "contain"
-    },
+    "icon": "./assets/images/icon.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.miningflow.game"
     },
     "android": {
-      "package": "com.miningflow.game"
+      "package": "com.miningflow.game",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#1C1F24"
+      }
     },
     "plugins": [
       "expo-router",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "expo-audio",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "backgroundColor": "#1C1F24"
+        }
+      ]
     ]
   }
 }

@@ -41,6 +41,21 @@ export const colors = {
   overburden: '#8D7B6A',
   coal: '#3A3F46',
   gravel: '#A8A29A',
+
+  // Soft tints (chips, status backgrounds, selected states)
+  primarySoft: '#FFE8D6',
+  secondarySoft: '#FFF3CF',
+  infoSoft: '#DDF4F7',
+  successSoft: '#DCF2E5',
+  dangerSoft: '#F8DEDE',
+  border: '#E3DED6',
+  borderOnDark: 'rgba(255,255,255,0.10)',
+
+  // Overlays / scrims for imagery and modals
+  scrim: '#0F1114',
+  backdrop: 'rgba(15, 17, 20, 0.72)',
+  glassDark: 'rgba(28, 31, 36, 0.82)',
+  glassLight: 'rgba(255, 255, 255, 0.92)',
 } as const;
 
 export const spacing = {
@@ -68,6 +83,9 @@ export const typography = {
   label: { fontSize: 12, fontWeight: '700' as const, letterSpacing: 0.8 },
   caption: { fontSize: 12, fontWeight: '500' as const },
   tiny: { fontSize: 10, fontWeight: '700' as const, letterSpacing: 0.5 },
+  hero: { fontSize: 40, fontWeight: '900' as const, letterSpacing: 1.5 },
+  bodyLarge: { fontSize: 17, fontWeight: '500' as const, lineHeight: 24 },
+  button: { fontSize: 16, fontWeight: '800' as const, letterSpacing: 0.6 },
 };
 
 export const shadows = {
@@ -92,6 +110,22 @@ export const animation = {
   normal: 220,
   slow: 380,
   starPop: 500,
+  /** Delay between staggered list items on entrance. */
+  stagger: 60,
+  /** Press-in scale for tappable surfaces. */
+  pressScale: 0.96,
+} as const;
+
+/** Layout constants shared by screens. */
+export const layout = {
+  gutter: 16,
+  maxContentWidth: 520,
+  bottomBarHeight: 64,
+  logoSize: 120,
+  iconBadge: 40,
+  progressHeight: 8,
+  /** Upper portion of the home scrim gradient that stays transparent (0..1). */
+  scrimStart: 0.35,
 } as const;
 
 export const iconSizes = {

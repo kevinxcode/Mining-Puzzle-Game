@@ -1,23 +1,42 @@
 /**
- * MINING FLOW — home screen.
- * Premium modern home: player level + XP, title, primary CONTINUE action,
- * navigation buttons and star/coin totals.
+ * Mining Puzzle Game — home screen.
+ * Full-bleed pit art + scrim, emblem + title, player level/XP, primary CONTINUE,
+ * icon menu (campaign, induction, equipment, statistics, achievements) and totals.
  */
 
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, ImageBackground, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Coins, Settings, Star } from 'lucide-react-native';
-import { colors, radius, shadows, spacing, typography } from '@/theme/tokens';
+import {
+  BarChart3,
+  ChevronRight,
+  Coins,
+  GraduationCap,
+  Map as MapIcon,
+  Play,
+  Settings,
+  Star,
+  Trophy,
+  Wrench,
+} from 'lucide-react-native';
+import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { LEVELS, getLevelByNumber } from '@/game/levels/levelFactory';
-import { playerLevelFromXp } from '@/state/save';
+import { INDUCTION_MODULE_IDS } from '@/game/induction/modules';
+import { inductionProgress, xpProgress } from '@/state/save';
 import { useProgression } from '@/state/progressionStore';
 import { formatNumber } from '@/utils/format';
+import { FadeInView } from '@/components/FadeInView';
 import { IconButton } from '@/components/IconButton';
+import { PressableScale } from '@/components/PressableScale';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { Scrim } from '@/components/Scrim';
+import { XPBar } from '@/components/XPBar';
 import { playSfx, updateMusicPlayback } from '@/services/audio';
 import { hapticLight } from '@/services/haptics';
+
+const bgHome = require('../assets/images/bg-home.png');
+const logo = require('../assets/images/logo.png');
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -25,13 +44,15 @@ export default function HomeScreen() {
   const coins = useProgression((s) => s.coins);
   const levelRecords = useProgression((s) => s.levels);
   const lastPlayedLevelId = useProgression((s) => s.lastPlayedLevelId);
+  const induction = useProgression((s) => s.induction);
 
   useEffect(() => {
     updateMusicPlayback();
   }, []);
 
   const totalStars = Object.values(levelRecords).reduce((sum, r) => sum + r.stars, 0);
-  const playerLevel = playerLevelFromXp(xp);
+  const xpInfo = xpProgress(xp);
+  const training = inductionProgress(induction, INDUCTION_MODULE_IDS);
 
   // CONTINUE: the next uncompleted level, or the final level when everything is done.
   const nextUncompleted = LEVELS.find((l) => !levelRecords[l.id]);
@@ -47,93 +68,176 @@ export default function HomeScreen() {
     router.push(path);
   };
 
+  const menu = [
+    { label: 'CAMPAIGN', detail: `${Object.keys(levelRecords).length} / ${LEVELS.length} levels`, Icon: MapIcon, tint: colors.secondary, path: '/campaign' },
+    {
+      label: 'SITE INDUCTION',
+      detail: training.completed === training.total ? 'Certified' : `${training.completed} / ${training.total} modules`,
+      Icon: GraduationCap,
+      tint: colors.info,
+      path: '/induction',
+    },
+    { label: 'EQUIPMENT', detail: 'Fleet & upgrades', Icon: Wrench, tint: colors.primary, path: '/equipment' },
+    { label: 'STATISTICS', detail: 'Career totals', Icon: BarChart3, tint: colors.success, path: '/statistics' },
+    { label: 'ACHIEVEMENTS', detail: 'Milestones', Icon: Trophy, tint: colors.secondary, path: '/achievements' },
+  ] as const;
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        {/* Top bar */}
-        <View style={styles.topBar}>
-          <View style={styles.levelBadge}>
-            <Text style={styles.levelText}>LV {playerLevel}</Text>
-          </View>
-          <Text style={styles.xpText}>{formatNumber(xp)} XP</Text>
-          <IconButton
-            icon={<Settings size={20} color={colors.textOnDark} />}
-            accessibilityLabel="Settings"
-            onPress={() => go('/settings')}
-          />
-        </View>
+    <ImageBackground source={bgHome} style={styles.bg} resizeMode="cover">
+      <Scrim topOpacity={0.45} bottomOpacity={0.92} />
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={styles.container} bounces={false}>
+          {/* Top bar */}
+          <FadeInView style={styles.topBar}>
+            <View style={[styles.xpPill, shadows.soft]}>
+              <XPBar
+                level={xpInfo.level}
+                xp={xp}
+                currentLevelXp={xpInfo.currentLevelXp}
+                nextLevelXp={xpInfo.nextLevelXp}
+              />
+            </View>
+            <IconButton
+              icon={<Settings size={iconSizes.md} color={colors.textOnDark} />}
+              accessibilityLabel="Settings"
+              onPress={() => go('/settings')}
+            />
+          </FadeInView>
 
-        {/* Title */}
-        <View style={styles.titleBlock}>
-          <Text style={styles.title}>MINING FLOW</Text>
-          <Text style={styles.subtitle}>Logistics Puzzle Game</Text>
-        </View>
+          {/* Emblem + title */}
+          <FadeInView index={1} style={styles.titleBlock}>
+            <Image source={logo} style={styles.logo} resizeMode="contain" accessibilityIgnoresInvertColors accessible={false} />
+            <Text style={styles.title} accessibilityRole="header">
+              MINING PUZZLE
+            </Text>
+            <Text style={styles.subtitle}>LOAD · HAUL · DUMP · REPEAT</Text>
+          </FadeInView>
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          <PrimaryButton
-            label="▶  CONTINUE"
-            onPress={() => go(`/level/${continueLevel.id}`)}
-            style={styles.continueButton}
-          />
-          <PrimaryButton label="CAMPAIGN" variant="ghost" onPress={() => go('/campaign')} style={styles.menuButton} />
-          <PrimaryButton label="EQUIPMENT" variant="ghost" onPress={() => go('/equipment')} style={styles.menuButton} />
-          <PrimaryButton label="STATISTICS" variant="ghost" onPress={() => go('/statistics')} style={styles.menuButton} />
-          <PrimaryButton label="ACHIEVEMENTS" variant="ghost" onPress={() => go('/achievements')} style={styles.menuButton} />
-        </View>
+          {/* Primary action */}
+          <FadeInView index={2}>
+            <PrimaryButton
+              label={`CONTINUE · LEVEL ${continueLevel.id}`}
+              accessibilityLabel={`Continue, level ${continueLevel.id}: ${continueLevel.name}`}
+              icon={<Play size={iconSizes.md} color={colors.textOnDark} fill={colors.textOnDark} />}
+              onPress={() => go(`/level/${continueLevel.id}`)}
+              style={styles.continueButton}
+            />
+            <Text style={styles.continueName} numberOfLines={1}>
+              {continueLevel.name} · {continueLevel.regionName}
+            </Text>
+          </FadeInView>
 
-        {/* Footer stats */}
-        <View style={styles.footer}>
-          <View style={styles.footerItem}>
-            <Star size={18} color={colors.secondary} fill={colors.secondary} />
-            <Text style={styles.footerText}>{formatNumber(totalStars)}</Text>
+          {/* Menu */}
+          <View style={styles.menu}>
+            {menu.map((item, i) => (
+              <FadeInView key={item.label} index={3 + i}>
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.label}, ${item.detail}`}
+                  onPress={() => go(item.path)}
+                  style={styles.menuItem}
+                >
+                  <View style={[styles.menuIcon, { backgroundColor: item.tint }]}>
+                    <item.Icon size={iconSizes.md} color={colors.surface} />
+                  </View>
+                  <View style={styles.menuText}>
+                    <Text style={styles.menuLabel}>{item.label}</Text>
+                    <Text style={styles.menuDetail}>{item.detail}</Text>
+                  </View>
+                  <ChevronRight size={iconSizes.md} color={colors.textOnDarkMuted} />
+                </PressableScale>
+              </FadeInView>
+            ))}
           </View>
-          <View style={styles.footerItem}>
-            <Coins size={18} color={colors.primary} />
-            <Text style={styles.footerText}>{formatNumber(coins)}</Text>
-          </View>
-        </View>
-      </View>
-    </SafeAreaView>
+
+          {/* Totals */}
+          <FadeInView index={9} style={styles.footer}>
+            <View style={styles.footerItem} accessibilityLabel={`${totalStars} stars`}>
+              <Star size={iconSizes.sm} color={colors.secondary} fill={colors.secondary} />
+              <Text style={styles.footerText}>{formatNumber(totalStars)}</Text>
+            </View>
+            <View style={styles.footerDivider} />
+            <View style={styles.footerItem} accessibilityLabel={`${coins} coins`}>
+              <Coins size={iconSizes.sm} color={colors.primary} />
+              <Text style={styles.footerText}>{formatNumber(coins)}</Text>
+            </View>
+          </FadeInView>
+        </ScrollView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  bg: { flex: 1, backgroundColor: colors.surface },
+  safe: { flex: 1 },
   container: {
-    flex: 1,
-    paddingHorizontal: spacing.xl,
+    flexGrow: 1,
+    paddingHorizontal: layout.gutter,
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
+    gap: spacing.lg,
+    width: '100%',
+    maxWidth: layout.maxContentWidth,
+    alignSelf: 'center',
   },
-  topBar: {
+  topBar: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  xpPill: {
+    flex: 1,
+    backgroundColor: colors.glassDark,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderOnDark,
+  },
+  titleBlock: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.md },
+  logo: { width: layout.logoSize, height: layout.logoSize, marginBottom: spacing.sm },
+  title: {
+    ...typography.hero,
+    color: colors.textOnDark,
+    textAlign: 'center',
+    textShadowColor: colors.scrim,
+    textShadowRadius: 12,
+  },
+  subtitle: { ...typography.label, color: colors.secondary, letterSpacing: 2.5 },
+  continueButton: { paddingVertical: spacing.lg, borderRadius: radius.xl },
+  continueName: { ...typography.caption, color: colors.textOnDarkMuted, textAlign: 'center', marginTop: spacing.sm },
+  menu: { gap: spacing.sm },
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-  },
-  levelBadge: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.pill,
+    backgroundColor: colors.glassDark,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderOnDark,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    ...shadows.soft,
+    paddingVertical: spacing.sm,
+    minHeight: minTouchTarget + spacing.sm,
   },
-  levelText: { ...typography.label, color: colors.textOnDark },
-  xpText: { ...typography.body, color: colors.textMuted, flex: 1 },
-  titleBlock: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
-  title: { ...typography.display, color: colors.text, letterSpacing: 1.5 },
-  subtitle: { ...typography.caption, color: colors.textMuted, letterSpacing: 2 },
-  actions: { gap: spacing.md, marginBottom: spacing.xl },
-  continueButton: { paddingVertical: spacing.lg },
-  menuButton: { paddingVertical: spacing.md + 2 },
+  menuIcon: {
+    width: layout.iconBadge,
+    height: layout.iconBadge,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuText: { flex: 1, gap: 2 },
+  menuLabel: { ...typography.button, color: colors.textOnDark },
+  menuDetail: { ...typography.caption, color: colors.textOnDarkMuted },
   footer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    ...shadows.soft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xl,
+    backgroundColor: colors.glassDark,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    alignSelf: 'center',
   },
   footerItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  footerDivider: { width: 1, height: spacing.lg, backgroundColor: colors.borderOnDark },
   footerText: { ...typography.heading, color: colors.textOnDark },
 });

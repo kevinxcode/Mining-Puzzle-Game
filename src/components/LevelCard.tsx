@@ -1,12 +1,13 @@
 /**
- * MINING FLOW — campaign level node.
+ * Campaign level node: number badge, name, stars; lock (icon + dim) and "next" states.
  */
 
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Lock } from 'lucide-react-native';
-import { colors, radius, shadows, spacing, typography } from '@/theme/tokens';
+import { StyleSheet, Text, View } from 'react-native';
+import { ChevronRight, Lock } from 'lucide-react-native';
+import { colors, iconSizes, layout, minTouchTarget, radius, spacing, typography } from '@/theme/tokens';
 import { hapticSelection } from '@/services/haptics';
 import { playSfx } from '@/services/audio';
+import { PressableScale } from './PressableScale';
 import { StarRating } from './StarRating';
 
 interface LevelCardProps {
@@ -16,20 +17,15 @@ interface LevelCardProps {
   stars: number;
   locked: boolean;
   onPress: () => void;
+  /** Highlight as the next level to play. */
+  isNext?: boolean;
 }
 
-export function LevelCard({
-  levelNumber,
-  name,
-  accent,
-  stars,
-  locked,
-  onPress,
-}: LevelCardProps) {
+export function LevelCard({ levelNumber, name, accent, stars, locked, onPress, isNext = false }: LevelCardProps) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`Level ${levelNumber}: ${name}${locked ? ' (locked)' : ''}`}
+      accessibilityLabel={`Level ${levelNumber}: ${name}. ${locked ? 'Locked' : `${stars} of 3 stars`}${isNext ? '. Next up' : ''}`}
       accessibilityState={{ disabled: locked }}
       disabled={locked}
       onPress={() => {
@@ -37,25 +33,24 @@ export function LevelCard({
         hapticSelection();
         onPress();
       }}
-      style={({ pressed }) => [
-        styles.card,
-        { opacity: locked ? 0.55 : pressed ? 0.9 : 1 },
-      ]}
+      style={[styles.card, isNext && { borderColor: accent, backgroundColor: colors.primarySoft }, locked && styles.locked]}
     >
-      <View style={[styles.badge, { backgroundColor: locked ? colors.textMuted : accent }]}>
+      <View style={[styles.badge, { backgroundColor: locked ? colors.surfaceMuted : accent }]}>
         {locked ? (
-          <Lock size={14} color={colors.textOnDark} />
+          <Lock size={iconSizes.xs} color={colors.textMuted} />
         ) : (
           <Text style={styles.badgeText}>{levelNumber}</Text>
         )}
       </View>
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={[styles.name, locked && styles.nameLocked]} numberOfLines={1}>
           {name}
         </Text>
-        <StarRating count={stars} size={12} />
+        {locked ? <Text style={styles.lockedText}>Complete the previous level</Text> : <StarRating count={stars} size={iconSizes.xs} />}
       </View>
-    </Pressable>
+      {isNext ? <Text style={[styles.nextTag, { backgroundColor: accent }]}>NEXT</Text> : null}
+      {!locked ? <ChevronRight size={iconSizes.sm} color={colors.textMuted} /> : null}
+    </PressableScale>
   );
 }
 
@@ -64,19 +59,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    ...shadows.soft,
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minHeight: minTouchTarget + spacing.sm,
   },
+  locked: { opacity: 0.6 },
   badge: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
+    width: layout.iconBadge,
+    height: layout.iconBadge,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: { ...typography.heading, color: colors.textOnDark },
+  badgeText: { ...typography.heading, color: colors.surface },
   info: { flex: 1, gap: 2 },
-  name: { ...typography.body, color: colors.text },
+  name: { ...typography.body, fontWeight: '700', color: colors.text },
+  nameLocked: { color: colors.textMuted },
+  lockedText: { ...typography.caption, color: colors.textMuted },
+  nextTag: {
+    ...typography.tiny,
+    color: colors.surface,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    overflow: 'hidden',
+  },
 });

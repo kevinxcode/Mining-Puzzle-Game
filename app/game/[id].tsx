@@ -6,7 +6,7 @@
  * subscribes to its frames with useSyncExternalStore.
  */
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,10 +15,12 @@ import {
   FastForward,
   Pause,
   Play,
+  Radio,
   Route as RouteIcon,
   Truck,
 } from 'lucide-react-native';
-import { colors, radius, shadows, spacing, typography } from '@/theme/tokens';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { colors, iconSizes, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { getLevelById, TOTAL_LEVELS } from '@/game/levels/levelFactory';
 import { SimController } from '@/game/simController';
 import {
@@ -39,6 +41,7 @@ import { GameMap } from '@/components/GameMap';
 import { IconButton } from '@/components/IconButton';
 import { MissionHeader } from '@/components/MissionHeader';
 import { MissionResult } from '@/components/MissionResult';
+import { PressableScale } from '@/components/PressableScale';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ProductionMeter } from '@/components/ProductionMeter';
 import { RouteSheet } from '@/components/RouteSheet';
@@ -47,6 +50,34 @@ import { playSfx } from '@/services/audio';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
 
 const noopSubscribe = () => () => undefined;
+
+/** Bottom-bar button: icon over a short label (44pt+ target). */
+function BarButton({
+  icon,
+  label,
+  accessibilityLabel,
+  onPress,
+}: {
+  icon: ReactNode;
+  label: string;
+  accessibilityLabel: string;
+  onPress: () => void;
+}) {
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={() => {
+        playSfx('tap');
+        onPress();
+      }}
+      style={styles.barButton}
+    >
+      {icon}
+      <Text style={styles.barLabel}>{label}</Text>
+    </PressableScale>
+  );
+}
 
 export default function GameScreen() {
   const router = useRouter();
@@ -204,11 +235,12 @@ export default function GameScreen() {
 
         {/* Event feed banner */}
         {state.eventFeed.length > 0 ? (
-          <View style={styles.feedBanner}>
+          <Animated.View key={state.eventFeed[0].message} entering={FadeInUp} style={styles.feedBanner} accessibilityLiveRegion="polite">
+            <Radio size={iconSizes.xs} color={colors.secondary} />
             <Text style={styles.feedText} numberOfLines={1}>
               {state.eventFeed[0].message}
             </Text>
-          </View>
+          </Animated.View>
         ) : null}
 
         {/* Mining map — the visual focus */}
@@ -240,28 +272,32 @@ export default function GameScreen() {
 
       {/* Floating control bar */}
       <View style={[styles.controlBar, shadows.raised]}>
-        <IconButton
-          icon={<Truck size={20} color={colors.textOnDark} />}
+        <BarButton
+          icon={<Truck size={iconSizes.md} color={colors.textOnDark} />}
+          label="Fleet"
           accessibilityLabel="Equipment"
           onPress={() => setSheetOpen(true)}
         />
-        <IconButton
-          icon={<RouteIcon size={20} color={colors.textOnDark} />}
+        <BarButton
+          icon={<RouteIcon size={iconSizes.md} color={colors.textOnDark} />}
+          label="Routes"
           accessibilityLabel="Routes"
           onPress={() => {
             setSelectedTruckId(selectedTruckId ?? state.trucks[0]?.id ?? null);
             setRouteSheetOpen(true);
           }}
         />
-        <IconButton
-          icon={<FastForward size={20} color={colors.textOnDark} />}
+        <BarButton
+          icon={<FastForward size={iconSizes.md} color={state.speed > 1 ? colors.secondary : colors.textOnDark} />}
+          label={`${state.speed}x`}
           accessibilityLabel={`Simulation speed ${state.speed}x — tap to change`}
           onPress={cycleSpeed}
         />
-        <Text style={styles.speedLabel}>{state.speed}x</Text>
         {ready ? (
           <PrimaryButton
-            label="START OPERATION"
+            label="START"
+            accessibilityLabel="Start operation"
+            icon={<Play size={iconSizes.sm} color={colors.textOnDark} fill={colors.textOnDark} />}
             onPress={() => {
               controller.start();
               if (level.tutorialSteps) setTutorialDone(true);
@@ -269,17 +305,18 @@ export default function GameScreen() {
             style={styles.startButton}
           />
         ) : (
-          <IconButton
+          <PrimaryButton
+            label={state.status === 'paused' ? 'RESUME' : 'PAUSE'}
+            variant={state.status === 'paused' ? 'primary' : 'ghost'}
             icon={
               state.status === 'paused' ? (
-                <Play size={20} color={colors.textOnDark} />
+                <Play size={iconSizes.sm} color={colors.textOnDark} fill={colors.textOnDark} />
               ) : (
-                <Pause size={20} color={colors.textOnDark} />
+                <Pause size={iconSizes.sm} color={colors.textOnDark} />
               )
             }
-            accessibilityLabel={state.status === 'paused' ? 'Resume' : 'Pause'}
-            variant="accent"
             onPress={() => controller.togglePause()}
+            style={styles.startButton}
           />
         )}
       </View>
@@ -360,24 +397,36 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headerFill: { flex: 1 },
   feedBanner: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-  },
-  feedText: { ...typography.caption, color: colors.textOnDark },
-  mapWrap: { flex: 1 },
-  controlBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     backgroundColor: colors.surface,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm,
+    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
+    paddingVertical: spacing.xs + 2,
   },
-  speedLabel: { ...typography.label, color: colors.textOnDark, width: 28 },
-  startButton: { flex: 1, paddingVertical: spacing.md },
+  feedText: { ...typography.caption, color: colors.textOnDark, flex: 1 },
+  mapWrap: { flex: 1 },
+  controlBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.xl,
+  },
+  barButton: {
+    minWidth: minTouchTarget + spacing.xs,
+    minHeight: minTouchTarget + spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    borderRadius: radius.md,
+  },
+  barLabel: { ...typography.tiny, color: colors.textOnDarkMuted },
+  startButton: { flex: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
 });

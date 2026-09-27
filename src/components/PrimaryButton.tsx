@@ -1,25 +1,32 @@
 /**
- * MINING FLOW — primary action button.
+ * Primary action button — large, rounded, tactile (press scale), optional leading icon.
  */
 
-import { Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
-import { colors, radius, shadows, spacing, typography } from '@/theme/tokens';
+import type { ReactNode } from 'react';
+import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { colors, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { hapticLight } from '@/services/haptics';
 import { playSfx } from '@/services/audio';
+import { PressableScale } from './PressableScale';
 
 interface PrimaryButtonProps {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'light' | 'outline';
   disabled?: boolean;
   style?: ViewStyle;
+  icon?: ReactNode;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 const VARIANTS = {
-  primary: { background: colors.primary, text: colors.textOnDark },
-  secondary: { background: colors.secondary, text: colors.text },
-  ghost: { background: colors.surfaceElevated, text: colors.textOnDark },
-  danger: { background: colors.danger, text: colors.textOnDark },
+  primary: { background: colors.primary, text: colors.textOnDark, border: colors.primary },
+  secondary: { background: colors.secondary, text: colors.text, border: colors.secondary },
+  ghost: { background: colors.surfaceElevated, text: colors.textOnDark, border: colors.surfaceElevated },
+  danger: { background: colors.danger, text: colors.textOnDark, border: colors.danger },
+  light: { background: colors.card, text: colors.text, border: colors.card },
+  outline: { background: 'transparent', text: colors.text, border: colors.border },
 } as const;
 
 export function PrimaryButton({
@@ -28,12 +35,16 @@ export function PrimaryButton({
   variant = 'primary',
   disabled = false,
   style,
+  icon,
+  accessibilityLabel,
+  accessibilityHint,
 }: PrimaryButtonProps) {
   const palette = VARIANTS[variant];
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={() => {
@@ -41,28 +52,33 @@ export function PrimaryButton({
         hapticLight();
         onPress();
       }}
-      style={({ pressed }) => [
+      style={[
         styles.base,
-        { backgroundColor: palette.background, opacity: disabled ? 0.4 : pressed ? 0.85 : 1 },
+        variant !== 'outline' && shadows.soft,
+        { backgroundColor: palette.background, borderColor: palette.border, opacity: disabled ? 0.4 : 1 },
         style,
       ]}
     >
-      <Text style={[styles.label, { color: palette.text }]}>{label}</Text>
-    </Pressable>
+      <View style={styles.row}>
+        {icon}
+        <Text style={[styles.label, { color: palette.text }]} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
-    ...shadows.soft,
+    minHeight: minTouchTarget + 4,
   },
-  label: {
-    ...typography.heading,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  label: { ...typography.button },
 });

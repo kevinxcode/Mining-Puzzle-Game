@@ -6,7 +6,11 @@
 
 import { balance } from '../game/config/balance';
 
-export const SAVE_VERSION = 1;
+/**
+ * v1: campaign progression.
+ * v2: adds `induction` (Site Induction training progress + trainee name).
+ */
+export const SAVE_VERSION = 2;
 export const SAVE_KEY = 'miningflow.save';
 
 export interface LevelRecord {
@@ -37,6 +41,24 @@ export interface SettingsState {
   haptics: boolean;
 }
 
+export interface InductionModuleRecord {
+  /** Best quiz score (correct answers). */
+  bestScore: number;
+  /** Number of questions in the quiz when the best score was set. */
+  total: number;
+  /** Timestamp of the first passing attempt, or null while not passed. */
+  completedAt: number | null;
+  attempts: number;
+}
+
+export interface InductionState {
+  modules: Record<string, InductionModuleRecord>;
+  /** Player-entered name for the certificate (stored locally only). */
+  traineeName: string;
+  /** Timestamp when all modules were first completed. */
+  certifiedAt: number | null;
+}
+
 export interface SaveData {
   version: number;
   xp: number;
@@ -47,6 +69,7 @@ export interface SaveData {
   statistics: StatisticsState;
   settings: SettingsState;
   lastPlayedLevelId: string | null;
+  induction: InductionState;
 }
 
 export interface LevelResultInput {
@@ -89,7 +112,12 @@ export function createDefaultSave(): SaveData {
     },
     settings: { music: true, sfx: true, haptics: true },
     lastPlayedLevelId: null,
+    induction: createDefaultInduction(),
   };
+}
+
+export function createDefaultInduction(): InductionState {
+  return { modules: {}, traineeName: '', certifiedAt: null };
 }
 
 export function serializeSave(data: SaveData): string {
@@ -123,9 +151,95 @@ export function migrateSave(data: Partial<SaveData> & { version?: number }): Sav
     achievements: { ...(data.achievements ?? {}) },
     statistics: { ...base.statistics, ...(data.statistics ?? {}) },
     settings: { ...base.settings, ...(data.settings ?? {}) },
+    induction: migrateInduction(data.induction),
     version: SAVE_VERSION,
   };
   return merged;
+}
+
+/** v1 saves have no induction block; malformed entries are dropped instead of failing the whole save. */
+function migrateInduction(raw: unknown): InductionState {
+  const base = createDefaultInduction();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return base;
+  const data = raw as Partial<InductionState>;
+  const modules: Record<string, InductionModuleRecord> = {};
+  if (data.modules && typeof data.modules === 'object') {
+    for (const [id, rec] of Object.entries(data.modules)) {
+      if (!rec || typeof rec !== 'object') continue;
+      const r = rec as Partial<InductionModuleRecord>;
+      modules[id] = {
+        bestScore: typeof r.bestScore === 'number' ? r.bestScore : 0,
+        total: typeof r.total === 'number' ? r.total : 0,
+        completedAt: typeof r.completedAt === 'number' ? r.completedAt : null,
+        attempts: typeof r.attempts === 'number' ? r.attempts : 0,
+      };
+    }
+  }
+  return {
+    modules,
+    traineeName: typeof data.traineeName === 'string' ? data.traineeName.slice(0, MAX_TRAINEE_NAME) : '',
+    certifiedAt: typeof data.certifiedAt === 'number' ? data.certifiedAt : null,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Site Induction progress (pure, testable)                            */
+/* ------------------------------------------------------------------ */
+
+export const MAX_TRAINEE_NAME = 40;
+
+export interface QuizAttempt {
+  correct: number;
+  total: number;
+  passed: boolean;
+}
+
+/**
+ * Records a quiz attempt. Best score is kept; a module is completed on its
+ * first pass and stays completed. When every module in `allModuleIds` is
+ * complete, the certificate date is set (once).
+ */
+export function applyInductionQuiz(
+  save: SaveData,
+  moduleId: string,
+  attempt: QuizAttempt,
+  allModuleIds: readonly string[],
+  now: number = Date.now(),
+): SaveData {
+  const prev = save.induction.modules[moduleId];
+  const better = !prev || attempt.correct > prev.bestScore;
+  const record: InductionModuleRecord = {
+    bestScore: better ? attempt.correct : prev.bestScore,
+    total: better ? attempt.total : prev.total,
+    completedAt: prev?.completedAt ?? (attempt.passed ? now : null),
+    attempts: (prev?.attempts ?? 0) + 1,
+  };
+  const modules = { ...save.induction.modules, [moduleId]: record };
+  const allDone = allModuleIds.length > 0 && allModuleIds.every((id) => modules[id]?.completedAt != null);
+  return {
+    ...save,
+    induction: {
+      ...save.induction,
+      modules,
+      certifiedAt: save.induction.certifiedAt ?? (allDone ? now : null),
+    },
+  };
+}
+
+export function setTraineeName(save: SaveData, name: string): SaveData {
+  return {
+    ...save,
+    induction: { ...save.induction, traineeName: name.replace(/\s+/g, ' ').trimStart().slice(0, MAX_TRAINEE_NAME) },
+  };
+}
+
+export function inductionProgress(
+  induction: InductionState,
+  allModuleIds: readonly string[],
+): { completed: number; total: number; fraction: number } {
+  const completed = allModuleIds.filter((id) => induction.modules[id]?.completedAt != null).length;
+  const total = allModuleIds.length;
+  return { completed, total, fraction: total > 0 ? completed / total : 0 };
 }
 
 function validateShape(data: SaveData): void {

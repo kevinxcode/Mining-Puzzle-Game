@@ -1,5 +1,5 @@
 /**
- * MINING FLOW — root layout.
+ * Mining Puzzle Game — root layout.
  */
 
 import { Stack } from 'expo-router';
@@ -29,6 +29,9 @@ export default function RootLayout() {
           <Stack.Screen name="statistics" />
           <Stack.Screen name="achievements" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="induction/index" />
+          <Stack.Screen name="induction/[id]" />
+          <Stack.Screen name="induction/glossary" />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

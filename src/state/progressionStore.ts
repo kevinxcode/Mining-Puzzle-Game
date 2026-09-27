@@ -14,8 +14,11 @@ import type { ResultFlags } from '@/game/scoring';
 import {
   SAVE_KEY,
   SAVE_VERSION,
+  applyInductionQuiz,
   applyLevelResult,
   createDefaultSave,
+  setTraineeName,
+  type QuizAttempt,
   migrateSave,
   type LevelResultInput,
   type SaveData,
@@ -39,6 +42,8 @@ interface ProgressionActions {
   toggleSetting: (key: keyof SettingsState) => void;
   setLastPlayed: (levelId: string) => void;
   resetProgress: () => void;
+  recordInductionQuiz: (moduleId: string, attempt: QuizAttempt, allModuleIds: readonly string[]) => void;
+  setTraineeName: (name: string) => void;
 }
 
 export type ProgressionStore = SaveData & ProgressionActions;
@@ -96,6 +101,14 @@ export const useProgression = create<ProgressionStore>()(
         set({ ...get(), lastPlayedLevelId: levelId });
       },
 
+      recordInductionQuiz: (moduleId, attempt, allModuleIds) => {
+        set(applyInductionQuiz(getCurrentSave(), moduleId, attempt, allModuleIds));
+      },
+
+      setTraineeName: (name) => {
+        set(setTraineeName(getCurrentSave(), name));
+      },
+
       resetProgress: () => {
         const fresh = createDefaultSave();
         syncServiceSettings(fresh.settings);
@@ -116,6 +129,7 @@ export const useProgression = create<ProgressionStore>()(
         statistics: state.statistics,
         settings: state.settings,
         lastPlayedLevelId: state.lastPlayedLevelId,
+        induction: state.induction,
       }),
       migrate: (persisted) => migrateSave((persisted ?? {}) as Partial<SaveData>),
       merge: (persisted, current) => {
@@ -151,5 +165,6 @@ export function getCurrentSave(): SaveData {
     statistics: state.statistics,
     settings: state.settings,
     lastPlayedLevelId: state.lastPlayedLevelId,
+    induction: state.induction,
   };
 }
