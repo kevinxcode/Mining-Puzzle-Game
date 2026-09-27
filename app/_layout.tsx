@@ -2,18 +2,22 @@
  * Mining Puzzle Game — root layout.
  */
 
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { colors } from '@/theme/tokens';
 
+/** Routes drawn over dark artwork need light status bar icons. */
+const LIGHT_STATUS_BAR_ROUTES = new Set(['/']);
+
 export default function RootLayout() {
+  const pathname = usePathname();
   return (
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaProvider>
-        <StatusBar style="dark" />
+        <StatusBar style={LIGHT_STATUS_BAR_ROUTES.has(pathname) ? 'light' : 'dark'} />
         <Stack
           screenOptions={{
             headerShown: false,

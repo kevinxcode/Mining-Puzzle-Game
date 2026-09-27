@@ -32,7 +32,7 @@ export default function InductionScreen() {
 
   return (
     <ImageBackground source={bgInduction} style={styles.bg} resizeMode="cover">
-      <Scrim topOpacity={0.55} bottomOpacity={0.35} />
+      <Scrim topOpacity={0.8} bottomOpacity={0.35} />
       <SafeAreaView style={styles.safe}>
         <ScreenHeader title="Site Induction" subtitle="Training for new team members" tone="dark" />
         <ScrollView contentContainerStyle={styles.content}>
