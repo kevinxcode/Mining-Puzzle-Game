@@ -79,10 +79,17 @@ function BarButton({
   );
 }
 
-export default function GameScreen() {
-  const router = useRouter();
+export default function GameRoute() {
   const params = useLocalSearchParams<{ id: string }>();
-  const level = getLevelById(String(params.id));
+  const levelId = String(params.id);
+  // Keyed by level id: moving to another level remounts, so the simulation
+  // controller and tutorial state never carry over from the previous level.
+  return <GameScreen key={levelId} levelId={levelId} />;
+}
+
+function GameScreen({ levelId }: { levelId: string }) {
+  const router = useRouter();
+  const level = getLevelById(levelId);
 
   const upgrades = useProgression((s) => s.upgrades);
   const recordLevelResult = useProgression((s) => s.recordLevelResult);

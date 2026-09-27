@@ -3,9 +3,11 @@
  */
 
 import { useState, type ReactNode } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Info, Music, RotateCcw, Smartphone, Volume2 } from 'lucide-react-native';
+import { ChevronRight, Info, Music, RotateCcw, Shield, Smartphone, Volume2 } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { useProgression } from '@/state/progressionStore';
 import { setMusicEnabled } from '@/services/audio';
@@ -18,6 +20,8 @@ export default function SettingsScreen() {
   const toggleSetting = useProgression((s) => s.toggleSetting);
   const resetProgress = useProgression((s) => s.resetProgress);
   const [resetting, setResetting] = useState(false);
+  const router = useRouter();
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   const confirmReset = () => {
     Alert.alert('Reset Progress', 'This deletes all progress, stars, coins, upgrades and induction records. Continue?', [
@@ -76,7 +80,17 @@ export default function SettingsScreen() {
             excavators, dump trucks, routes and fuel to hit production targets before the shift
             ends. The Site Induction track is generic training content, not any real site’s procedures.
           </Text>
-          <Text style={styles.aboutVersion}>Version 1.0.0</Text>
+          <Text style={styles.aboutVersion}>Version {appVersion}</Text>
+          <Pressable
+            style={styles.linkRow}
+            accessibilityRole="link"
+            accessibilityLabel="Privacy policy"
+            onPress={() => router.push('/privacy')}
+          >
+            <Shield size={iconSizes.sm} color={colors.info} />
+            <Text style={styles.linkText}>Privacy Policy</Text>
+            <ChevronRight size={iconSizes.sm} color={colors.textMuted} />
+          </Pressable>
         </FadeInView>
 
         <Text style={styles.sectionLabel}>DANGER ZONE</Text>
@@ -127,6 +141,14 @@ function SettingRow({
 }
 
 const styles = StyleSheet.create({
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: minTouchTarget,
+    marginTop: spacing.sm,
+  },
+  linkText: { ...typography.body, color: colors.text, flex: 1, fontWeight: '600' },
   safe: { flex: 1, backgroundColor: colors.background },
   content: {
     padding: spacing.lg,

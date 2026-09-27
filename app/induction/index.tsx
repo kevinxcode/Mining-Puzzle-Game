@@ -2,14 +2,18 @@
  * Site Induction — track overview: progress, modules, glossary and certificate.
  */
 
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ImageBackground, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { Alert, ImageBackground, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Award,
   BookOpen,
   CheckCircle2,
   ChevronRight,
+  Share2,
 } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { INDUCTION_MODULES, INDUCTION_MODULE_IDS } from '@/game/induction/modules';
@@ -20,6 +24,8 @@ import { FadeInView } from '@/components/FadeInView';
 import { PressableScale } from '@/components/PressableScale';
 import { Scrim } from '@/components/Scrim';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { PrimaryButton } from '@/components/PrimaryButton';
+import { buildCertificateHtml } from '@/game/induction/certificate';
 
 const bgInduction = require('../../assets/images/bg-induction.png');
 
@@ -28,6 +34,27 @@ export default function InductionScreen() {
   const induction = useProgression((s) => s.induction);
   const setTraineeName = useProgression((s) => s.setTraineeName);
   const progress = inductionProgress(induction, INDUCTION_MODULE_IDS);
+  const [exporting, setExporting] = useState(false);
+
+  const exportCertificate = async () => {
+    setExporting(true);
+    try {
+      const { uri } = await Print.printToFileAsync({ html: buildCertificateHtml(induction) });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Share induction certificate',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Certificate saved', `Saved to ${uri}`);
+      }
+    } catch {
+      Alert.alert('Export failed', 'The certificate could not be created. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
   const certified = induction.certifiedAt !== null;
 
   return (
@@ -140,6 +167,13 @@ export default function InductionScreen() {
                 <Text style={styles.certNote}>
                   Game training record only — always complete your site’s official induction.
                 </Text>
+                <PrimaryButton
+                  label={exporting ? 'PREPARING PDF…' : 'EXPORT PDF'}
+                  icon={<Share2 size={iconSizes.sm} color={colors.textOnDark} />}
+                  accessibilityHint="Creates a PDF certificate you can share with your supervisor or HR"
+                  onPress={exportCertificate}
+                  disabled={exporting}
+                />
               </View>
             ) : (
               <Text style={styles.certLocked}>

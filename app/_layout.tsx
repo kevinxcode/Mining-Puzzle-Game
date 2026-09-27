@@ -33,6 +33,7 @@ export default function RootLayout() {
           <Stack.Screen name="statistics" />
           <Stack.Screen name="achievements" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="privacy" />
           <Stack.Screen name="induction/index" />
           <Stack.Screen name="induction/[id]" />
           <Stack.Screen name="induction/glossary" />

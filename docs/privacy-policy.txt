@@ -1,0 +1,42 @@
+Privacy Policy — Mining Puzzle Game
+
+Last updated: 27 September 2026
+
+This Privacy Policy explains how the mobile app "Mining Puzzle Game" (package: com.fadedind.miningflow.game) handles your information.
+
+
+1. What we collect
+
+Nothing is sent to us or to any third party. Mining Puzzle Game has no accounts, no ads, no analytics and no tracking. The app does not access your contacts, location, camera, microphone or photos.
+
+
+2. What is stored on your device
+
+Your game progress, stars, coins, upgrades, statistics, achievements, settings and Site Induction results (including the trainee name you type for the certificate) are saved only in the app's local storage on your device. This data is never uploaded by the app.
+
+
+3. Sharing
+
+Data leaves your device only when you choose to export or share an induction certificate (PDF). You decide where it goes, using your device's share menu.
+
+
+4. Deleting your data
+
+Open Settings > Reset Progress in the app to erase all saved data, or uninstall the app. Because we do not hold any of your data, there is nothing to delete on our side.
+
+
+5. Children
+
+The app does not knowingly collect any information from anyone, including children.
+
+
+6. Changes to this policy
+
+If this policy changes, the updated version will be published in the app and on this page, with a new "Last updated" date.
+
+
+7. Contact
+
+If you have questions about this Privacy Policy, contact:
+[Developer / company name]
+[Contact email]

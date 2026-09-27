@@ -9,14 +9,16 @@
     "icon": "./assets/images/icon.png",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.miningflow.game"
+      "bundleIdentifier": "com.fadedind.miningflow.game",
+      "buildNumber": "1"
     },
     "android": {
-      "package": "com.miningflow.game",
+      "package": "com.fadedind.miningflow.game",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#1C1F24"
-      }
+      },
+      "versionCode": 1
     },
     "plugins": [
       "expo-router",
@@ -31,7 +33,8 @@
           "imageWidth": 200,
           "backgroundColor": "#1C1F24"
         }
-      ]
+      ],
+      "expo-sharing"
     ]
   }
 }
