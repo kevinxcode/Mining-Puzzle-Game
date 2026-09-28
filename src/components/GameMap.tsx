@@ -28,6 +28,8 @@ interface GameMapProps {
   onSelectTruck: (truckId: string) => void;
   /** Long-press + drag a truck onto an excavator or a route line. */
   onDropTruck?: (truckId: string, target: DropTarget) => void;
+  /** Simulation is advancing (drives motion effects). */
+  running?: boolean;
 }
 
 export type DropTarget = { kind: 'excavator'; excavatorId: string } | { kind: 'route'; routeId: string };
@@ -63,7 +65,7 @@ const DECORATIONS = {
   cones: [{ x: 26, y: 46 }, { x: 74, y: 46 }, { x: 46, y: 72 }],
 } as const;
 
-export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, onDropTruck }: GameMapProps) {
+export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, onDropTruck, running = false }: GameMapProps) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const pad = 26;
   const usable = Math.max(0.01, Math.min(size.width, size.height) - pad * 2);
@@ -86,7 +88,7 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
     [level, roads, toScreen],
   );
 
-  const occupiedSegments = useMemo(() => {
+  const occupiedSegments = (() => {
     const keys = new Set<string>();
     for (const truck of trucks) {
       if (truck.pathIndex >= truck.nodePath.length - 1) continue;
@@ -95,15 +97,13 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
       }
     }
     return keys;
-  }, [trucks]);
+  })();
 
-  const loadingExcavatorIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const truck of trucks) {
-      if (truck.state === 'loading') ids.add(truck.assignedExcavatorId);
-    }
-    return ids;
-  }, [trucks]);
+  // Not memoized: the simulation mutates `trucks` in place, so the array identity never changes.
+  const loadingExcavatorIds = new Set<string>();
+  for (const truck of trucks) {
+    if (truck.state === 'loading') loadingExcavatorIds.add(truck.assignedExcavatorId);
+  }
 
   /* ---------------- Drag-to-assign ---------------- */
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -290,18 +290,7 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
           {level.map.nodes.map((node) => {
             const s = toScreen(node.position);
             const material = getMaterial(node.materialId);
-            if (node.type === 'excavator') {
-              return (
-                <ExcavatorUnit
-                  key={node.id}
-                  position={s}
-                  scale={scale}
-                  materialColor={material?.color ?? colors.mapRock}
-                  label={node.name}
-                  loading={loadingExcavatorIds.has(node.id)}
-                />
-              );
-            }
+            if (node.type === 'excavator') return null; // drawn in the native overlay
             if (node.type === 'dump') {
               return (
                 <G key={node.id}>
@@ -416,20 +405,6 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
             );
           })}
 
-          {/* Trucks */}
-          {trucks.map((truck) => (
-            <TruckUnit
-              key={truck.id}
-              position={toScreen(truckPosition(truck, level))}
-              scale={scale}
-              loadFraction={truck.spec.capacity > 0 ? truck.load / truck.spec.capacity : 0}
-              state={truck.state}
-              label={truck.spec.name}
-              selected={truck.id === selectedTruckId}
-              onPress={() => onSelectTruck(truck.id)}
-            />
-          ))}
-
           {/* Drag feedback: highlighted drop target + ghost truck under the finger */}
           {hoveredRoute
             ? hoveredRoute.nodePath.slice(0, -1).map((from, i) => {
@@ -473,6 +448,34 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
             </G>
           ) : null}
         </Svg>
+        {/* Excavators + trucks: native overlays so motion runs on the UI thread */}
+        {level.map.nodes
+          .filter((node) => node.type === 'excavator')
+          .map((node) => (
+            <ExcavatorUnit
+              key={node.id}
+              position={toScreen(node.position)}
+              scale={scale}
+              materialColor={getMaterial(node.materialId)?.color ?? colors.mapRock}
+              label={node.name}
+              loading={loadingExcavatorIds.has(node.id)}
+              running={running}
+            />
+          ))}
+        {trucks.map((truck) => (
+          <TruckUnit
+            key={truck.id}
+            position={toScreen(truckPosition(truck, level))}
+            scale={scale}
+            loadFraction={truck.spec.capacity > 0 ? truck.load / truck.spec.capacity : 0}
+            state={truck.state}
+            label={truck.spec.name}
+            selected={truck.id === selectedTruckId}
+            running={running}
+            parkSide={toScreen(truckPosition(truck, level)).x > size.width * 0.6 ? -1 : 1}
+            onPress={() => onSelectTruck(truck.id)}
+          />
+        ))}
         </View>
         </GestureDetector>
       ) : null}

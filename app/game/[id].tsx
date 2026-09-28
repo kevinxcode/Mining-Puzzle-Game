@@ -256,6 +256,7 @@ function GameScreen({ levelId }: { levelId: string }) {
             level={level}
             trucks={state.trucks}
             roads={state.roads}
+            running={state.status === 'running'}
             selectedTruckId={selectedTruckId}
             onSelectTruck={(truckId) => {
               setSelectedTruckId(truckId);
