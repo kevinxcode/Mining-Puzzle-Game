@@ -15,15 +15,19 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  Download,
+  Package,
+  Upload,
   RotateCcw,
   FileSpreadsheet,
   Share2,
   ShieldAlert,
 } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
-import { INDUCTION_MODULES, INDUCTION_MODULE_IDS } from '@/game/induction/modules';
+import { useActivePack, useContentStore } from '@/state/contentStore';
+import { contentPackJson } from '@/game/induction/contentPack';
+import * as DocumentPicker from 'expo-document-picker';
 import { HAZARD_SCENES } from '@/game/induction/hazards';
-import { PRESTART_SCENARIOS } from '@/game/induction/prestart';
 import { MAX_TRAINEE_NAME, certificateExpiresAt, certificateStatus, inductionProgress } from '@/state/save';
 import { useProgression } from '@/state/progressionStore';
 import { MODULE_ICONS } from '@/components/InductionArt';
@@ -43,8 +47,51 @@ export default function InductionScreen() {
   const setTraineeName = useProgression((s) => s.setTraineeName);
   const setTraineeField = useProgression((s) => s.setTraineeField);
   const renew = useProgression((s) => s.renewInduction);
-  const progress = inductionProgress(induction, INDUCTION_MODULE_IDS);
+  const pack = useActivePack();
+  const INDUCTION_MODULES = pack.modules;
+  const PRESTART_SCENARIOS = pack.prestart;
+  const progress = inductionProgress(induction, INDUCTION_MODULES.map((m) => m.id));
   const [exporting, setExporting] = useState(false);
+
+  const customPack = useContentStore((s) => s.custom);
+  const importPack = useContentStore((s) => s.importPack);
+  const resetPack = useContentStore((s) => s.resetToBuiltIn);
+
+  const pickPack = async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain', '*/*'], copyToCacheDirectory: true });
+      if (picked.canceled || !picked.assets?.[0]) return;
+      const raw = await new File(picked.assets[0].uri).text();
+      const result = importPack(raw);
+      if (result.ok) {
+        Alert.alert('Content pack loaded', `${result.pack.name} v${result.pack.version}: ${result.pack.modules.length} modules, ${result.pack.prestart.length} pre-start checks.`);
+      } else {
+        const shown = result.errors.slice(0, 8);
+        if (result.errors.length > 8) shown.push(`…and ${result.errors.length - 8} more`);
+        Alert.alert('Pack not loaded', shown.join(String.fromCharCode(10)));
+      }
+    } catch {
+      Alert.alert('Import failed', 'The file could not be read.');
+    }
+  };
+
+  const exportTemplate = async () => {
+    try {
+      const file = new File(Paths.cache, 'induction-content-pack.json');
+      if (file.exists) file.delete();
+      file.create();
+      file.write(contentPackJson(pack));
+      await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Share content pack' });
+    } catch {
+      Alert.alert('Export failed', 'The content pack could not be created.');
+    }
+  };
+
+  const confirmResetPack = () =>
+    Alert.alert('Use built-in content', 'Remove the imported content pack and go back to the built-in induction?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Reset', style: 'destructive', onPress: resetPack },
+    ]);
 
   const exportReport = async () => {
     setExporting(true);
@@ -53,7 +100,7 @@ export default function InductionScreen() {
       const file = new File(Paths.cache, `training-report-${name}-${new Date().toISOString().slice(0, 10)}.csv`);
       if (file.exists) file.delete();
       file.create();
-      file.write(buildTrainingReportCsv(induction, Date.now()));
+      file.write(buildTrainingReportCsv(induction, Date.now(), pack));
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: 'Share training report', UTI: 'public.comma-separated-values-text' });
       } else {
@@ -69,7 +116,7 @@ export default function InductionScreen() {
   const exportCertificate = async () => {
     setExporting(true);
     try {
-      const { uri } = await Print.printToFileAsync({ html: buildCertificateHtml(induction) });
+      const { uri } = await Print.printToFileAsync({ html: buildCertificateHtml(induction, pack) });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
@@ -85,9 +132,9 @@ export default function InductionScreen() {
       setExporting(false);
     }
   };
-  const certStatus = certificateStatus(induction, Date.now());
+  const certStatus = certificateStatus(induction, Date.now(), pack.version);
   const certified = certStatus === 'valid';
-  const expired = certStatus === 'expired';
+  const expired = certStatus === 'expired' || certStatus === 'outdated';
   const expiresAt = certificateExpiresAt(induction);
   const confirmRenew = () =>
     Alert.alert('Renew induction', 'This clears your passes so you can retake every module and practical check. Your details and history are kept.', [
@@ -233,6 +280,27 @@ export default function InductionScreen() {
             </PressableScale>
           </FadeInView>
 
+          <FadeInView index={INDUCTION_MODULES.length + 2} style={[styles.packCard, shadows.soft]}>
+            <View style={styles.packHead}>
+              <Package size={iconSizes.md} color={colors.info} />
+              <View style={styles.moduleInfo}>
+                <Text style={styles.moduleTitle}>Content pack</Text>
+                <Text style={styles.moduleSummary}>
+                  {pack.name} · v{pack.version}
+                  {customPack ? ' · imported' : ' · built-in'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.packHint}>
+              HSE teams can export the template, edit modules, glossary and pre-start checks, then import it here.
+            </Text>
+            <View style={styles.packButtons}>
+              <PrimaryButton label="IMPORT" variant="outline" icon={<Upload size={iconSizes.sm} color={colors.text} />} onPress={pickPack} style={styles.packButton} />
+              <PrimaryButton label="TEMPLATE" variant="outline" icon={<Download size={iconSizes.sm} color={colors.text} />} onPress={exportTemplate} style={styles.packButton} />
+            </View>
+            {customPack ? <PrimaryButton label="USE BUILT-IN CONTENT" variant="ghost" onPress={confirmResetPack} /> : null}
+          </FadeInView>
+
           <FadeInView index={INDUCTION_MODULES.length + 2}>
             <PrimaryButton
               label={exporting ? 'PREPARING…' : 'EXPORT TRAINING REPORT (CSV)'}
@@ -264,7 +332,7 @@ export default function InductionScreen() {
             />
             {(
               [
-                ['employeeId', 'EMPLOYEE ID', 'e.g. KE-1042'],
+                ['employeeId', 'EMPLOYEE ID', 'e.g. ID-1042'],
                 ['site', 'SITE', 'e.g. North Pit'],
                 ['company', 'COMPANY / CONTRACTOR', 'e.g. Contractor A'],
               ] as const
@@ -308,8 +376,16 @@ export default function InductionScreen() {
               </View>
             ) : expired ? (
               <View style={styles.certBody}>
-                <Text style={styles.certExpired}>Certificate expired on {new Date(expiresAt!).toLocaleDateString()}</Text>
-                <Text style={styles.certText}>Inductions must be renewed every year. Renew to retake the modules and practical checks.</Text>
+                <Text style={styles.certExpired}>
+                  {certStatus === 'outdated'
+                    ? `Content updated to v${pack.version}`
+                    : `Certificate expired on ${new Date(expiresAt!).toLocaleDateString()}`}
+                </Text>
+                <Text style={styles.certText}>
+                  {certStatus === 'outdated'
+                    ? 'The site induction content has changed since you were certified. Renew to retake it.'
+                    : 'Inductions must be renewed every year. Renew to retake the modules and practical checks.'}
+                </Text>
                 <PrimaryButton label="RENEW INDUCTION" icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />} onPress={confirmRenew} />
               </View>
             ) : (
@@ -325,6 +401,11 @@ export default function InductionScreen() {
 }
 
 const styles = StyleSheet.create({
+  packCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
+  packHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  packHint: { ...typography.caption, color: colors.textMuted },
+  packButtons: { flexDirection: 'row', gap: spacing.sm },
+  packButton: { flex: 1 },
   certExpired: { ...typography.label, color: colors.warning },
   reportButton: { backgroundColor: colors.card },
   hazardHeading: { ...typography.caption, color: colors.textOnDark, fontWeight: '800', letterSpacing: 1, marginTop: spacing.sm },

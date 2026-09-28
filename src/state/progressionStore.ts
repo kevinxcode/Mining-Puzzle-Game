@@ -52,7 +52,12 @@ interface ProgressionActions {
   toggleSetting: (key: keyof SettingsState) => void;
   setLastPlayed: (levelId: string) => void;
   resetProgress: () => void;
-  recordInductionQuiz: (moduleId: string, attempt: QuizAttempt, allModuleIds: readonly string[]) => void;
+  recordInductionQuiz: (
+    moduleId: string,
+    attempt: QuizAttempt,
+    allModuleIds: readonly string[],
+    contentVersion?: string,
+  ) => void;
   setTraineeName: (name: string) => void;
   setTraineeField: (field: TraineeField, value: string) => void;
   renewInduction: () => void;
@@ -113,8 +118,8 @@ export const useProgression = create<ProgressionStore>()(
         set({ ...get(), lastPlayedLevelId: levelId });
       },
 
-      recordInductionQuiz: (moduleId, attempt, allModuleIds) => {
-        set(applyInductionQuiz(getCurrentSave(), moduleId, attempt, allModuleIds));
+      recordInductionQuiz: (moduleId, attempt, allModuleIds, contentVersion) => {
+        set(applyInductionQuiz(getCurrentSave(), moduleId, attempt, allModuleIds, Date.now(), contentVersion ?? null));
       },
 
       setTraineeName: (name) => {

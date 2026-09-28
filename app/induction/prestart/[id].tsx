@@ -12,12 +12,12 @@ import { Ban, CheckCircle2, ClipboardCheck, RotateCcw, Truck, XCircle } from 'lu
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import {
   correctDecision,
-  getPrestartScenario,
   scorePrestart,
   type PrestartArea,
   type PrestartDecision,
 } from '@/game/induction/prestart';
 import { useProgression } from '@/state/progressionStore';
+import { useActivePack } from '@/state/contentStore';
 import { PressableScale } from '@/components/PressableScale';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -33,7 +33,7 @@ const AREA_LABEL: Record<PrestartArea, string> = {
 export default function PrestartScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const scenario = getPrestartScenario(String(id));
+  const scenario = useActivePack().prestart.find((s) => s.id === String(id));
   const recordPrestartRun = useProgression((s) => s.recordPrestartRun);
 
   const [marks, setMarks] = useState<Record<string, boolean>>({});

@@ -20,7 +20,7 @@ function certified() {
   save.induction.hazards['loading-area'] = { bestFound: 4, total: 4, attempts: 1, passedAt: T };
   save.induction.certifiedAt = T;
   save = setTraineeField(save, 'traineeName', 'Budi Santoso');
-  save = setTraineeField(save, 'employeeId', 'KE-1042');
+  save = setTraineeField(save, 'employeeId', 'ID-1042');
   save = setTraineeField(save, 'site', 'North Pit');
   save = setTraineeField(save, 'company', 'Contractor A');
   return save;
@@ -28,8 +28,8 @@ function certified() {
 
 describe('trainee identity', () => {
   test('fields are trimmed of repeated spaces and length-limited', () => {
-    const save = setTraineeField(createDefaultSave(), 'employeeId', '  KE   1042' + 'x'.repeat(60));
-    expect(save.induction.employeeId.startsWith('KE 1042')).toBe(true);
+    const save = setTraineeField(createDefaultSave(), 'employeeId', '  ID   1042' + 'x'.repeat(60));
+    expect(save.induction.employeeId.startsWith('ID 1042')).toBe(true);
     expect(save.induction.employeeId.length).toBeLessThanOrEqual(40);
   });
 
@@ -41,13 +41,13 @@ describe('trainee identity', () => {
   test('certificate and CSV show employee ID, site, company and expiry', () => {
     const save = certified();
     const html = buildCertificateHtml(save.induction);
-    for (const text of ['KE-1042', 'North Pit', 'Contractor A', 'Valid until: 2027-09-28']) expect(html).toContain(text);
+    for (const text of ['ID-1042', 'North Pit', 'Contractor A', 'Valid until: 2027-09-28']) expect(html).toContain(text);
     const csv = buildTrainingReportCsv(save.induction, T).replace(BOM, '');
     const [header, first] = csv.split('\n');
     expect(header).toBe(
       'Trainee,Employee ID,Site,Company,Activity type,Activity,Status,Best score,Attempts,Passed on,Certificate valid until,Report date',
     );
-    expect(first.startsWith('Budi Santoso,KE-1042,North Pit,Contractor A,Module,')).toBe(true);
+    expect(first.startsWith('Budi Santoso,ID-1042,North Pit,Contractor A,Module,')).toBe(true);
     expect(first).toContain(',2027-09-28,2026-09-28');
   });
 });
@@ -68,7 +68,7 @@ describe('certificate validity', () => {
     expect(i.certifiedAt).toBeNull();
     expect(Object.values(i.modules).every((r) => r.completedAt === null && r.attempts === 1)).toBe(true);
     expect(i.hazards['loading-area'].passedAt).toBeNull();
-    expect(i.employeeId).toBe('KE-1042');
+    expect(i.employeeId).toBe('ID-1042');
     expect(i.traineeName).toBe('Budi Santoso');
   });
 });

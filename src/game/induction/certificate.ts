@@ -4,9 +4,8 @@
  */
 
 import { certificateExpiresAt, type InductionState } from '@/state/save';
-import { INDUCTION_MODULES } from './modules';
 import { HAZARD_SCENES } from './hazards';
-import { PRESTART_SCENARIOS } from './prestart';
+import { DEFAULT_CONTENT_PACK, type ContentPack } from './contentPack';
 
 function escapeHtml(text: string): string {
   return text
@@ -22,7 +21,9 @@ function isoDate(timestamp: number): string {
   return new Date(timestamp).toISOString().slice(0, 10);
 }
 
-export function buildCertificateHtml(induction: InductionState): string {
+export function buildCertificateHtml(induction: InductionState, pack: ContentPack = DEFAULT_CONTENT_PACK): string {
+  const INDUCTION_MODULES = pack.modules;
+  const PRESTART_SCENARIOS = pack.prestart;
   if (induction.certifiedAt === null) {
     throw new Error('Certificate is only available once every module is passed.');
   }
@@ -74,12 +75,14 @@ export function buildCertificateHtml(induction: InductionState): string {
   .score { text-align: right; font-weight: 700; }
   .status { text-align: right; color: #555; width: 110px; }
   h2 { font-size: 15px; margin: 22px 0 0; color: #E05E00; letter-spacing: 1px; }
+  .pack { margin: 4px 0 0; font-size: 12px; color: #8A8F98; }
   .identity { margin: 8px 0 0; font-size: 13px; color: #555; }
   .meta { margin-top: 24px; font-size: 13px; color: #555; }
   .note { margin-top: 24px; font-size: 11px; color: #8A8F98; }
 </style></head>
 <body><div class="frame">
   <div class="eyebrow">MINING PUZZLE GAME · SITE INDUCTION</div>
+  <p class="pack">${escapeHtml(pack.name)} v${escapeHtml(pack.version)}</p>
   <h1>Induction Certificate</h1>
   <p>This certifies that</p>
   <div class="name">${name}</div>

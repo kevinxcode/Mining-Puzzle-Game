@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { CheckCircle2, Gamepad2, Lightbulb, RotateCcw, XCircle } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
-import { INDUCTION_MODULE_IDS, getInductionModule } from '@/game/induction/modules';
+import { useActivePack } from '@/state/contentStore';
 import { isAnswerCorrect, scoreQuiz, type QuizScore } from '@/game/induction/quiz';
 import { getLevelById } from '@/game/levels/levelFactory';
 import { useProgression } from '@/state/progressionStore';
@@ -33,7 +33,8 @@ type Phase = 'learn' | 'quiz' | 'result';
 export default function InductionModuleScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
-  const module = getInductionModule(String(params.id));
+  const pack = useActivePack();
+  const module = pack.modules.find((m) => m.id === String(params.id));
   const recordInductionQuiz = useProgression((s) => s.recordInductionQuiz);
   const { width } = useWindowDimensions();
   const pageWidth = Math.min(width, layout.maxContentWidth);
@@ -89,7 +90,7 @@ export default function InductionModuleScreen() {
       return;
     }
     const result = scoreQuiz(module.questions, answers);
-    recordInductionQuiz(module.id, result, INDUCTION_MODULE_IDS);
+    recordInductionQuiz(module.id, result, pack.modules.map((m) => m.id), pack.version);
     setScore(result);
     setPhase('result');
     playSfx(result.passed ? 'complete' : 'fail');

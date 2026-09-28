@@ -23,7 +23,7 @@ import {
 } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { LEVELS, getLevelByNumber } from '@/game/levels/levelFactory';
-import { INDUCTION_MODULE_IDS } from '@/game/induction/modules';
+import { useActivePack } from '@/state/contentStore';
 import { inductionProgress, xpProgress } from '@/state/save';
 import { localDateKey } from '@/game/levels/modeLevels';
 import { useProgression } from '@/state/progressionStore';
@@ -54,7 +54,8 @@ export default function HomeScreen() {
 
   const totalStars = Object.values(levelRecords).reduce((sum, r) => sum + r.stars, 0);
   const xpInfo = xpProgress(xp);
-  const training = inductionProgress(induction, INDUCTION_MODULE_IDS);
+  const pack = useActivePack();
+  const training = inductionProgress(induction, pack.modules.map((m) => m.id));
 
   // CONTINUE: the next uncompleted level, or the final level when everything is done.
   const nextUncompleted = LEVELS.find((l) => !levelRecords[l.id]);

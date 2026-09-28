@@ -7,11 +7,12 @@ import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
-import { GLOSSARY } from '@/game/induction/glossary';
+import { useActivePack } from '@/state/contentStore';
 import { FadeInView } from '@/components/FadeInView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 
 export default function GlossaryScreen() {
+  const GLOSSARY = useActivePack().glossary;
   const [query, setQuery] = useState('');
   const terms = useMemo(() => {
     const q = query.trim().toLowerCase();

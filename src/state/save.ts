@@ -65,6 +65,8 @@ export interface InductionState {
   company: string;
   /** Timestamp when all modules were first completed. */
   certifiedAt: number | null;
+  /** Content pack version the certificate was earned on (null = built-in, pre-packs). */
+  certifiedContentVersion: string | null;
   /** Hazard-spotting results per scene id. */
   hazards: Record<string, HazardRecord>;
   /** Pre-start inspection (P2H) results per scenario id. */
@@ -190,7 +192,7 @@ export function createDefaultSave(): SaveData {
 }
 
 export function createDefaultInduction(): InductionState {
-  return { modules: {}, traineeName: '', employeeId: '', site: '', company: '', certifiedAt: null, hazards: {}, prestart: {} };
+  return { modules: {}, traineeName: '', employeeId: '', site: '', company: '', certifiedAt: null, certifiedContentVersion: null, hazards: {}, prestart: {} };
 }
 
 export function serializeSave(data: SaveData): string {
@@ -281,6 +283,7 @@ function migrateInduction(raw: unknown): InductionState {
     site: typeof data.site === 'string' ? data.site.slice(0, MAX_TRAINEE_NAME) : '',
     company: typeof data.company === 'string' ? data.company.slice(0, MAX_TRAINEE_NAME) : '',
     certifiedAt: typeof data.certifiedAt === 'number' ? data.certifiedAt : null,
+    certifiedContentVersion: typeof data.certifiedContentVersion === 'string' ? data.certifiedContentVersion : null,
     hazards: migrateHazards(data.hazards),
     prestart: migratePrestart(data.prestart),
   };
@@ -380,6 +383,7 @@ export function applyInductionQuiz(
   attempt: QuizAttempt,
   allModuleIds: readonly string[],
   now: number = Date.now(),
+  contentVersion: string | null = null,
 ): SaveData {
   const prev = save.induction.modules[moduleId];
   const better = !prev || attempt.correct > prev.bestScore;
@@ -397,6 +401,8 @@ export function applyInductionQuiz(
       ...save.induction,
       modules,
       certifiedAt: save.induction.certifiedAt ?? (allDone ? now : null),
+      certifiedContentVersion:
+        save.induction.certifiedAt !== null ? save.induction.certifiedContentVersion : allDone ? contentVersion : null,
     },
   };
 }
@@ -426,10 +432,23 @@ export function certificateExpiresAt(induction: InductionState): number | null {
   return induction.certifiedAt === null ? null : induction.certifiedAt + CERTIFICATE_VALIDITY_DAYS * DAY_MS_CERT;
 }
 
-export function certificateStatus(induction: InductionState, now: number): 'none' | 'valid' | 'expired' {
+export type CertificateStatus = 'none' | 'valid' | 'expired' | 'outdated';
+
+/**
+ * `activeContentVersion`: version of the content pack in use. A certificate earned on
+ * a different version is outdated (built-in content before packs counts as a match).
+ */
+export function certificateStatus(
+  induction: InductionState,
+  now: number,
+  activeContentVersion: string | null = null,
+): CertificateStatus {
   const expires = certificateExpiresAt(induction);
   if (expires === null) return 'none';
-  return now < expires ? 'valid' : 'expired';
+  if (now >= expires) return 'expired';
+  const earnedOn = induction.certifiedContentVersion;
+  if (activeContentVersion !== null && earnedOn !== null && earnedOn !== activeContentVersion) return 'outdated';
+  return 'valid';
 }
 
 /** Starts a new induction cycle: passes and certificate cleared, identity and attempt history kept. */
@@ -442,6 +461,7 @@ export function renewInduction(save: SaveData): SaveData {
     induction: {
       ...i,
       certifiedAt: null,
+      certifiedContentVersion: null,
       modules: clear(i.modules, 'completedAt'),
       hazards: clear(i.hazards, 'passedAt'),
       prestart: clear(i.prestart, 'passedAt'),

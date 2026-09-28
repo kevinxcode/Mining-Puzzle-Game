@@ -5,8 +5,7 @@
 
 import { certificateExpiresAt, type InductionState } from '@/state/save';
 import { HAZARD_SCENES } from './hazards';
-import { INDUCTION_MODULES } from './modules';
-import { PRESTART_SCENARIOS } from './prestart';
+import { DEFAULT_CONTENT_PACK, type ContentPack } from './contentPack';
 
 /** UTF-8 byte-order mark; Excel needs it to detect the encoding. */
 export const BOM = String.fromCharCode(0xfeff);
@@ -42,7 +41,13 @@ interface Row {
   started: boolean;
 }
 
-export function buildTrainingReportCsv(induction: InductionState, now: number): string {
+export function buildTrainingReportCsv(
+  induction: InductionState,
+  now: number,
+  pack: ContentPack = DEFAULT_CONTENT_PACK,
+): string {
+  const INDUCTION_MODULES = pack.modules;
+  const PRESTART_SCENARIOS = pack.prestart;
   const trainee = induction.traineeName.trim() || 'Trainee';
   const rows: Row[] = [
     ...INDUCTION_MODULES.map((m) => {
