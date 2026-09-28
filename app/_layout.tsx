@@ -30,6 +30,7 @@ export default function RootLayout() {
           <Stack.Screen name="level/[id]" />
           <Stack.Screen name="game/[id]" />
           <Stack.Screen name="equipment" />
+          <Stack.Screen name="hq" />
           <Stack.Screen name="statistics" />
           <Stack.Screen name="achievements" />
           <Stack.Screen name="settings" />

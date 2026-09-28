@@ -5,6 +5,7 @@
  */
 
 import type { RunLog } from '@/game/replay';
+import { HQ_FACILITIES, hqCoinMultiplier, hqXpMultiplier, migrateHq, nextFacilityCost, type FacilityId, type HqState } from '@/game/config/siteHq';
 import { LIVERIES, createDefaultCosmetics, isLiveryOwned, migrateCosmetics, type CosmeticsState } from '@/game/config/liveries';
 import { balance } from '../game/config/balance';
 import { UPGRADES, upgradeCost } from '../game/config/equipment';
@@ -117,6 +118,7 @@ export interface SaveData {
   induction: InductionState;
   modes: ModesState;
   cosmetics: CosmeticsState;
+  hq: HqState;
 }
 
 export interface ModesState {
@@ -179,6 +181,7 @@ export function createDefaultSave(): SaveData {
     levels: {},
     upgrades: {},
     cosmetics: createDefaultCosmetics(),
+    hq: {},
     achievements: {},
     statistics: {
       totalTonsMoved: 0,
@@ -262,6 +265,7 @@ export function migrateSave(data: Partial<SaveData> & { version?: number }): Sav
     induction: migrateInduction(data.induction),
     modes: migrateModes(data.modes),
     cosmetics: migrateCosmetics(data.cosmetics),
+    hq: migrateHq(data.hq),
     version: SAVE_VERSION,
   };
   return merged;
@@ -545,6 +549,12 @@ export function applyLevelResult(
     levels: { ...save.levels },
     statistics: { ...save.statistics },
   };
+  // Site HQ bonuses scale the whole reward tier, so paid-once accounting stays exact.
+  result = {
+    ...result,
+    xpGain: Math.round(result.xpGain * hqXpMultiplier(save.hq)),
+    coinsGain: Math.round(result.coinsGain * hqCoinMultiplier(save.hq)),
+  };
   const previous = next.levels[levelId];
   const moreStars = !previous || result.stars > previous.stars;
   // Legacy records have no earned totals: treat them as fully paid unless stars improve.
@@ -634,6 +644,17 @@ export function applyUpgradePurchase(save: SaveData, upgradeId: string): Upgrade
       coins: save.coins - cost,
       upgrades: { ...save.upgrades, [upgradeId]: level + 1 },
     },
+  };
+}
+
+/** Builds the next level of a Site HQ facility. */
+export function applyHqBuild(save: SaveData, facilityId: FacilityId): UpgradePurchaseResult {
+  const facility = HQ_FACILITIES.find((f) => f.id === facilityId);
+  const cost = facility ? nextFacilityCost(save.hq, facility) : null;
+  if (!facility || cost === null || save.coins < cost) return { save, ok: false };
+  return {
+    ok: true,
+    save: { ...save, coins: save.coins - cost, hq: { ...save.hq, [facilityId]: (save.hq[facilityId] ?? 0) + 1 } },
   };
 }
 
@@ -731,6 +752,8 @@ export function applyModeResult(
     xpGranted = modeRewards.endlessXpPerShift;
     coinsGranted = modeRewards.endlessCoinsBase + ref.shift * modeRewards.endlessCoinsPerShift;
   }
+  xpGranted = Math.round(xpGranted * hqXpMultiplier(save.hq));
+  coinsGranted = Math.round(coinsGranted * hqCoinMultiplier(save.hq));
 
   next.xp += xpGranted;
   next.coins += coinsGranted;

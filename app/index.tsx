@@ -20,6 +20,7 @@ import {
   Star,
   Trophy,
   Wrench,
+  Building2,
 } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { LEVELS, getLevelByNumber } from '@/game/levels/levelFactory';
@@ -91,6 +92,7 @@ export default function HomeScreen() {
       path: '/modes',
     },
     { label: 'EQUIPMENT', detail: 'Fleet & upgrades', Icon: Wrench, tint: colors.primary, path: '/equipment' },
+    { label: 'SITE HQ', detail: 'Build facilities for bonuses', Icon: Building2, tint: colors.warning, path: '/hq' },
     { label: 'STATISTICS', detail: 'Career totals', Icon: BarChart3, tint: colors.success, path: '/statistics' },
     { label: 'ACHIEVEMENTS', detail: 'Milestones', Icon: Trophy, tint: colors.secondary, path: '/achievements' },
   ] as const;

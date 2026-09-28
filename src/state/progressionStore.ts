@@ -4,6 +4,7 @@
  * Save format is versioned; corruption falls back to a fresh save.
  */
 
+import type { FacilityId } from '@/game/config/siteHq';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,6 +24,7 @@ import {
   applyModeResult,
   applyUpgradePurchase,
   applyLiveryPurchase,
+  applyHqBuild,
   applyLiverySelect,
   createDefaultSave,
   setTraineeName,
@@ -52,6 +54,7 @@ interface ProgressionActions {
   ) => LevelResultOutcome;
   buyUpgrade: (upgradeId: string) => boolean;
   buyLivery: (liveryId: string) => boolean;
+  buildFacility: (facilityId: FacilityId) => boolean;
   selectLivery: (liveryId: string) => boolean;
   toggleSetting: (key: keyof SettingsState) => void;
   setLastPlayed: (levelId: string) => void;
@@ -109,6 +112,12 @@ export const useProgression = create<ProgressionStore>()(
         const purchase = applyUpgradePurchase(get(), upgradeId);
         if (purchase.ok) set(purchase.save);
         return purchase.ok;
+      },
+
+      buildFacility: (facilityId) => {
+        const build = applyHqBuild(get(), facilityId);
+        if (build.ok) set(build.save);
+        return build.ok;
       },
 
       buyLivery: (liveryId) => {
@@ -181,6 +190,7 @@ export const useProgression = create<ProgressionStore>()(
         induction: state.induction,
         modes: state.modes,
         cosmetics: state.cosmetics,
+        hq: state.hq,
       }),
       migrate: (persisted) => migrateSave((persisted ?? {}) as Partial<SaveData>),
       merge: (persisted, current) => {
@@ -219,5 +229,6 @@ export function getCurrentSave(): SaveData {
     induction: state.induction,
     modes: state.modes,
     cosmetics: state.cosmetics,
+    hq: state.hq,
   };
 }

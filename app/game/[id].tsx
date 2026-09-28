@@ -54,6 +54,7 @@ import { TutorialCoachmark } from '@/components/TutorialCoachmark';
 import { nextRouteAfter, parseModeLevelId, resolveLevel } from '@/game/levels/modeLevels';
 import { buildShareText } from '@/game/share';
 import { isRunLog } from '@/game/replay';
+import { hqExtraHints } from '@/game/config/siteHq';
 import { computeHint, HINTS_PER_RUN, type Hint, type HintAction } from '@/game/engine/hintEngine';
 import { playSfx } from '@/services/audio';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
@@ -105,6 +106,8 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: boolea
 
   const upgrades = useProgression((s) => s.upgrades);
   const recordLevelResult = useProgression((s) => s.recordLevelResult);
+  const hq = useProgression((s) => s.hq);
+  const hintsPerRun = HINTS_PER_RUN + hqExtraHints(hq);
 
   // Simulation controller lives outside React — created once per level.
   const controllerRef = useRef<SimController | null>(null);
@@ -119,7 +122,7 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: boolea
   const [tutorialStep, setTutorialStep] = useState(0);
   const [tutorialDone, setTutorialDone] = useState(!level?.tutorialSteps || ghostMode);
   const [resultRecorded, setResultRecorded] = useState(false);
-  const [hintsLeft, setHintsLeft] = useState(HINTS_PER_RUN);
+  const [hintsLeft, setHintsLeft] = useState(hintsPerRun);
   const [hint, setHint] = useState<Hint | null>(null);
   /** XP / coins actually paid for this run (replays only pay the difference). */
   const [grantedRewards, setGrantedRewards] = useState<{ xp: number; coins: number } | null>(null);
@@ -223,7 +226,7 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: boolea
   const replay = () => {
     playSfx('tap');
     setResultRecorded(false);
-    setHintsLeft(HINTS_PER_RUN);
+    setHintsLeft(hintsPerRun);
     setHint(null);
     setGrantedRewards(null);
     setTutorialDone(true);

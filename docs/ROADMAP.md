@@ -34,7 +34,7 @@ Effort: **S** = days, **M** = 1–2 weeks, **L** = 3+ weeks (small team).
 | # | Feature | Effort | Why |
 |---|---|---|---|
 | 6 | Leaderboards (global + crew/site code) with cloud save | M | Social play and competition between crews; **needs a backend decision** (Firebase / Supabase / company server) |
-| 7 | Site HQ: build facilities between levels (workshop, canteen, wash bay) for small passive bonuses | M–L | Long-term meta and a use for coins beyond upgrades |
+| 7 | ~~Site HQ~~ | M–L | **Done** — Workshop (+1 hint/level), Crew Canteen (+5% XP/level), Weighbridge (+5% coins/level), 3 levels each; never touches the sim |
 | 8 | ~~Ghost replay of your best run~~ | M | **Done** — command log of the best-scoring run, "Watch best run" on the level screen |
 | 9 | ~~Cosmetic truck liveries~~ | M | **Done** — 6 paint schemes in Equipment (coins or 30 three-star levels); site themes later |
 | 10 | Optional rewarded ad (free retry / double coins) — consumer build only | M | Industry-standard retention lever; never in company builds |
