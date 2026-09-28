@@ -6,7 +6,7 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CalendarDays, CalendarRange, CheckCircle2, Flame, Infinity as InfinityIcon, Play, Trophy } from 'lucide-react-native';
+import { CalendarDays, CalendarRange, CheckCircle2, Flame, Infinity as InfinityIcon, Play, Swords, Trophy } from 'lucide-react-native';
 import { colors, iconSizes, layout, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { modeRewards } from '@/game/config/rewards';
 import {
@@ -118,6 +118,24 @@ export default function ModesScreen() {
         </FadeInView>
 
         <FadeInView index={2} style={[styles.card, shadows.raised]}>
+          <View style={styles.cardHead}>
+            <View style={[styles.badge, { backgroundColor: colors.success }]}>
+              <Swords size={iconSizes.md} color={colors.textOnDark} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.eyebrow}>FRIEND CHALLENGE</Text>
+              <Text style={styles.title} accessibilityRole="header">
+                Beat your crew's best runs
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.body}>
+            Share a finished level as a code in any chat. Friends paste it to watch your run and try to beat it. Works offline.
+          </Text>
+          <PrimaryButton label="OPEN FRIEND CHALLENGE" icon={<Swords size={iconSizes.sm} color={colors.textOnDark} />} onPress={() => router.push('/challenge')} />
+        </FadeInView>
+
+        <FadeInView index={3} style={[styles.card, shadows.raised]}>
           <View style={styles.cardHead}>
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
               <InfinityIcon size={iconSizes.md} color={colors.textOnDark} />

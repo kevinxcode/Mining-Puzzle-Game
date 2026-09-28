@@ -221,6 +221,8 @@ export class SimController {
     this.commands = [];
     this.tickIndex = 0;
     this.ghostNext = this.ghost ? applyDue(this.state, this.level, this.ghost.commands, 0, 0) : 0;
+    // A replay's start command runs at tick 0, so it needs the loop right away.
+    if (this.ghost && this.state.status === 'running') this.play();
     this.notify();
   }
 

@@ -34,6 +34,8 @@ Effort: **S** = days, **M** = 1–2 weeks, **L** = 3+ weeks (small team).
 | # | Feature | Effort | Why |
 |---|---|---|---|
 | 6 | Leaderboards (global + crew/site code) with cloud save | M | Social play and competition between crews; **needs a backend decision** (Firebase / Supabase / company server) |
+| 6a | ~~Offline friend challenges~~ | S | **Done** — share a finished level as a code (nickname + ghost); the receiver replays it to verify the score, watches it and plays to beat it. No backend |
+| 6b | Online leaderboard + cloud save (Firebase Spark, free tier) | M | Next step once a Firebase project exists: anonymous auth + Firestore, nickname only; HSE training data stays on-device / company server (UU PDP) |
 | 7 | ~~Site HQ~~ | M–L | **Done** — Workshop (+1 hint/level), Crew Canteen (+5% XP/level), Weighbridge (+5% coins/level), 3 levels each; never touches the sim |
 | 8 | ~~Ghost replay of your best run~~ | M | **Done** — command log of the best-scoring run, "Watch best run" on the level screen |
 | 9 | ~~Cosmetic truck liveries~~ | M | **Done** — 6 paint schemes in Equipment (coins or 30 three-star levels); site themes later |

@@ -60,3 +60,19 @@ describe('ghost storage', () => {
     expect(save.levels['1'].ghost).toEqual(logB);
   });
 });
+
+describe('ghost playback loop', () => {
+  it('restarts its loop after WATCH AGAIN (reset)', () => {
+    jest.useFakeTimers();
+    const level = getLevelByNumber(1)!;
+    const ghost = new SimController(level, {}, { upgrades: {}, commands: [{ t: 0, kind: 'start' }] });
+    expect(ghost.state.status).toBe('running');
+    ghost.play();
+    ghost.reset();
+    const before = ghost.state.elapsed;
+    jest.advanceTimersByTime(2000);
+    expect(ghost.state.elapsed).toBeGreaterThan(before);
+    ghost.dispose();
+    jest.useRealTimers();
+  });
+});

@@ -8,7 +8,7 @@ import { colors, layout, radius, shadows, spacing, typography } from '@/theme/to
 import { FadeInView } from '@/components/FadeInView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 
-const LAST_UPDATED = '27 September 2026';
+const LAST_UPDATED = '28 September 2026';
 
 const SECTIONS: { title: string; body: string }[] = [
   {
@@ -24,7 +24,7 @@ const SECTIONS: { title: string; body: string }[] = [
   {
     title: 'Sharing',
     body:
-      'Data leaves your device only when you choose to export or share an induction certificate. You decide where it goes.',
+      'Data leaves your device only when you choose to share or export it, and you decide where it goes: an induction certificate (PDF) or training report (CSV) with the trainee details you entered; a content pack template with training material only; or a result message or friend challenge code with your nickname, the level and your moves — never your trainee name, employee ID or other progress.',
   },
   {
     title: 'Deleting your data',

@@ -54,12 +54,16 @@ import { TutorialCoachmark } from '@/components/TutorialCoachmark';
 import { nextRouteAfter, parseModeLevelId, resolveLevel } from '@/game/levels/modeLevels';
 import { buildShareText } from '@/game/share';
 import { isRunLog } from '@/game/replay';
+import { useChallengeStore } from '@/state/challengeStore';
 import { hqExtraHints } from '@/game/config/siteHq';
 import { computeHint, HINTS_PER_RUN, type Hint, type HintAction } from '@/game/engine/hintEngine';
 import { playSfx } from '@/services/audio';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
 
 const noopSubscribe = () => () => undefined;
+
+/** Which run a read-only replay shows, or null for normal play. */
+type GhostSource = 'best' | 'challenge' | null;
 
 /** Bottom-bar button: icon over a short label (44pt+ target). */
 function BarButton({
@@ -92,17 +96,24 @@ function BarButton({
 export default function GameRoute() {
   const params = useLocalSearchParams<{ id: string; ghost?: string }>();
   const levelId = String(params.id);
-  const ghostMode = params.ghost === '1';
+  const ghostMode: GhostSource = params.ghost === '1' ? 'best' : params.ghost === 'challenge' ? 'challenge' : null;
   // Keyed by level id: moving to another level remounts, so the simulation
   // controller and tutorial state never carry over from the previous level.
-  return <GameScreen key={`${levelId}${ghostMode ? ':ghost' : ''}`} levelId={levelId} ghostMode={ghostMode} />;
+  return <GameScreen key={`${levelId}:${ghostMode ?? 'play'}`} levelId={levelId} ghostMode={ghostMode} />;
 }
 
-function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: boolean }) {
+function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostSource }) {
   const router = useRouter();
   const level = resolveLevel(levelId);
   const savedGhost = useProgression((s) => s.levels[levelId]?.ghost);
-  const ghostLog = ghostMode && isRunLog(savedGhost) ? savedGhost : null;
+  const activeChallenge = useChallengeStore((s) => s.active);
+  const ghostLog =
+    ghostMode === 'best' && isRunLog(savedGhost)
+      ? savedGhost
+      : ghostMode === 'challenge' && activeChallenge?.levelId === levelId
+        ? activeChallenge.log
+        : null;
+  const ghostLabel = ghostMode === 'challenge' && activeChallenge ? `${activeChallenge.nickname.toUpperCase()}'S RUN` : 'BEST RUN REPLAY';
 
   const upgrades = useProgression((s) => s.upgrades);
   const recordLevelResult = useProgression((s) => s.recordLevelResult);
@@ -142,6 +153,11 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: boolea
       }
     });
     return () => subscription.remove();
+  }, [controller]);
+
+  // A replay starts running at tick 0 — kick off its loop once mounted.
+  useEffect(() => {
+    if (controller?.ghost && controller.state.status === 'running') controller.play();
   }, [controller]);
 
   // Dispose the controller on unmount.
@@ -317,7 +333,7 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: boolea
           {ghostLog ? (
             <View style={styles.ghostBadge} pointerEvents="none" accessibilityLiveRegion="polite">
               <Ghost size={iconSizes.sm} color={colors.textOnDark} />
-              <Text style={styles.ghostText}>BEST RUN REPLAY</Text>
+              <Text style={styles.ghostText}>{ghostLabel}</Text>
             </View>
           ) : null}
           {/* Hint + undo */}

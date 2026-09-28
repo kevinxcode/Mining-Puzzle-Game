@@ -5,7 +5,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronDown,
@@ -14,6 +14,7 @@ import {
   Fuel,
   Ghost,
   Gift,
+  Share2,
   Pickaxe,
   Play,
   Target,
@@ -26,6 +27,8 @@ import { parseModeLevelId, resolveLevel, withFleetClass } from '@/game/levels/mo
 import { TRUCK_CLASSES, unlockedTruckClasses } from '@/game/config/equipment';
 import type { TruckClass } from '@/types/game';
 import { useProgression } from '@/state/progressionStore';
+import { useChallengeStore } from '@/state/challengeStore';
+import { encodeChallenge } from '@/game/challenge';
 import { formatClock } from '@/utils/format';
 import { FadeInView } from '@/components/FadeInView';
 import { PressableScale } from '@/components/PressableScale';
@@ -41,6 +44,7 @@ export default function BriefingScreen() {
   const level = resolveLevel(String(params.id));
   const levelRecords = useProgression((s) => s.levels);
   const setLastPlayed = useProgression((s) => s.setLastPlayed);
+  const nickname = useChallengeStore((s) => s.nickname);
   const levelsCompleted = useProgression((s) => s.statistics.levelsCompleted);
   const [fleetOpen, setFleetOpen] = useState(false);
 
@@ -53,6 +57,12 @@ export default function BriefingScreen() {
   }
 
   const record = levelRecords[level.id];
+  const shareChallenge = () => {
+    if (!record?.ghost) return;
+    const code = encodeChallenge({ levelId: level.id, nickname: nickname || 'Player', log: record.ghost });
+    const message = `Beat my run on Mining Puzzle Game — Level ${level.id} · ${level.name} (${record.bestScore} pts).\n\nOpen Play Modes → Friend Challenge and paste this code:\n${code}`;
+    Share.share({ message }).catch(() => undefined);
+  };
   const modeRef = parseModeLevelId(level.id);
   // Mode levels reuse a campaign seed; `difficulty` holds that seed's level number.
   const accent = regionOfLevel(level.difficulty).accent;
@@ -199,6 +209,15 @@ export default function BriefingScreen() {
         </FadeInView>
       </ScrollView>
       <View style={styles.footer}>
+        {record?.ghost ? (
+          <PrimaryButton
+            label="SHARE CHALLENGE"
+            variant="outline"
+            accessibilityLabel="Share this run as a challenge code"
+            icon={<Share2 size={iconSizes.sm} color={colors.primary} />}
+            onPress={shareChallenge}
+          />
+        ) : null}
         {record?.ghost ? (
           <PrimaryButton
             label="WATCH BEST RUN"
