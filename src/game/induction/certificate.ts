@@ -3,7 +3,7 @@
  * Pure so it can be tested without native modules.
  */
 
-import type { InductionState } from '@/state/save';
+import { certificateExpiresAt, type InductionState } from '@/state/save';
 import { INDUCTION_MODULES } from './modules';
 import { HAZARD_SCENES } from './hazards';
 import { PRESTART_SCENARIOS } from './prestart';
@@ -27,6 +27,12 @@ export function buildCertificateHtml(induction: InductionState): string {
     throw new Error('Certificate is only available once every module is passed.');
   }
   const name = escapeHtml(induction.traineeName.trim() || 'Trainee');
+  const identity = [
+    induction.employeeId.trim() && `Employee ID: ${escapeHtml(induction.employeeId.trim())}`,
+    induction.site.trim() && `Site: ${escapeHtml(induction.site.trim())}`,
+    induction.company.trim() && `Company: ${escapeHtml(induction.company.trim())}`,
+  ].filter(Boolean);
+  const identityLine = identity.length ? `<p class="identity">${identity.join(' · ')}</p>` : '';
   const rows = INDUCTION_MODULES.map((module, index) => {
     const record = induction.modules[module.id];
     const score = record ? `${record.bestScore}/${record.total}` : '—';
@@ -68,6 +74,7 @@ export function buildCertificateHtml(induction: InductionState): string {
   .score { text-align: right; font-weight: 700; }
   .status { text-align: right; color: #555; width: 110px; }
   h2 { font-size: 15px; margin: 22px 0 0; color: #E05E00; letter-spacing: 1px; }
+  .identity { margin: 8px 0 0; font-size: 13px; color: #555; }
   .meta { margin-top: 24px; font-size: 13px; color: #555; }
   .note { margin-top: 24px; font-size: 11px; color: #8A8F98; }
 </style></head>
@@ -76,11 +83,12 @@ export function buildCertificateHtml(induction: InductionState): string {
   <h1>Induction Certificate</h1>
   <p>This certifies that</p>
   <div class="name">${name}</div>
+  ${identityLine}
   <p>has completed all ${INDUCTION_MODULES.length} Site Induction modules and passed each knowledge check.</p>
   <table>${rows}</table>
   ${hazardRows}
   ${prestartRows}
-  <p class="meta">Issued: ${isoDate(induction.certifiedAt)}</p>
+  <p class="meta">Issued: ${isoDate(induction.certifiedAt)} · Valid until: ${isoDate(certificateExpiresAt(induction)!)}</p>
   <p class="note">Game-based training record generated on the trainee's device. It is not an official site induction and does not replace your site's required safety training.</p>
 </div></body></html>`;
 }

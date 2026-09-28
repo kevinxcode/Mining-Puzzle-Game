@@ -3,12 +3,28 @@
  * Pure so it can be tested; the screen writes it to a file and shares it.
  */
 
-import type { InductionState } from '@/state/save';
+import { certificateExpiresAt, type InductionState } from '@/state/save';
 import { HAZARD_SCENES } from './hazards';
 import { INDUCTION_MODULES } from './modules';
 import { PRESTART_SCENARIOS } from './prestart';
 
-const HEADER = ['Trainee', 'Activity type', 'Activity', 'Status', 'Best score', 'Attempts', 'Passed on', 'Report date'];
+/** UTF-8 byte-order mark; Excel needs it to detect the encoding. */
+export const BOM = String.fromCharCode(0xfeff);
+
+const HEADER = [
+  'Trainee',
+  'Employee ID',
+  'Site',
+  'Company',
+  'Activity type',
+  'Activity',
+  'Status',
+  'Best score',
+  'Attempts',
+  'Passed on',
+  'Certificate valid until',
+  'Report date',
+];
 
 function csvCell(value: string | number): string {
   const text = String(value);
@@ -43,13 +59,17 @@ export function buildTrainingReportCsv(induction: InductionState, now: number): 
     }),
   ];
   const reportDate = isoDate(now);
+  const validUntil = isoDate(certificateExpiresAt(induction));
+  const identity = [trainee, induction.employeeId.trim(), induction.site.trim(), induction.company.trim()];
   const lines = [HEADER.join(',')];
   for (const row of rows) {
     const status = row.passedAt ? 'Passed' : row.started ? 'In progress' : 'Not started';
     lines.push(
-      [trainee, row.type, row.title, status, row.best, row.attempts, isoDate(row.passedAt), reportDate].map(csvCell).join(','),
+      [...identity, row.type, row.title, status, row.best, row.attempts, isoDate(row.passedAt), validUntil, reportDate]
+        .map(csvCell)
+        .join(','),
     );
   }
   // BOM: Excel otherwise opens UTF-8 CSV files with the wrong encoding.
-  return `﻿${lines.join('\n')}\n`;
+  return `${BOM}${lines.join('\n')}\n`;
 }

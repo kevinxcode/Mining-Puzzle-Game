@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  RotateCcw,
   FileSpreadsheet,
   Share2,
   ShieldAlert,
@@ -23,7 +24,7 @@ import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, ty
 import { INDUCTION_MODULES, INDUCTION_MODULE_IDS } from '@/game/induction/modules';
 import { HAZARD_SCENES } from '@/game/induction/hazards';
 import { PRESTART_SCENARIOS } from '@/game/induction/prestart';
-import { MAX_TRAINEE_NAME, inductionProgress } from '@/state/save';
+import { MAX_TRAINEE_NAME, certificateExpiresAt, certificateStatus, inductionProgress } from '@/state/save';
 import { useProgression } from '@/state/progressionStore';
 import { MODULE_ICONS } from '@/components/InductionArt';
 import { FadeInView } from '@/components/FadeInView';
@@ -40,6 +41,8 @@ export default function InductionScreen() {
   const router = useRouter();
   const induction = useProgression((s) => s.induction);
   const setTraineeName = useProgression((s) => s.setTraineeName);
+  const setTraineeField = useProgression((s) => s.setTraineeField);
+  const renew = useProgression((s) => s.renewInduction);
   const progress = inductionProgress(induction, INDUCTION_MODULE_IDS);
   const [exporting, setExporting] = useState(false);
 
@@ -82,7 +85,15 @@ export default function InductionScreen() {
       setExporting(false);
     }
   };
-  const certified = induction.certifiedAt !== null;
+  const certStatus = certificateStatus(induction, Date.now());
+  const certified = certStatus === 'valid';
+  const expired = certStatus === 'expired';
+  const expiresAt = certificateExpiresAt(induction);
+  const confirmRenew = () =>
+    Alert.alert('Renew induction', 'This clears your passes so you can retake every module and practical check. Your details and history are kept.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Renew', onPress: renew },
+    ]);
 
   return (
     <ImageBackground source={bgInduction} style={styles.bg} resizeMode="cover">
@@ -251,6 +262,28 @@ export default function InductionScreen() {
               autoCorrect={false}
               returnKeyType="done"
             />
+            {(
+              [
+                ['employeeId', 'EMPLOYEE ID', 'e.g. KE-1042'],
+                ['site', 'SITE', 'e.g. North Pit'],
+                ['company', 'COMPANY / CONTRACTOR', 'e.g. Contractor A'],
+              ] as const
+            ).map(([field, label, placeholder]) => (
+              <View key={field}>
+                <Text style={styles.certLabel}>{label}</Text>
+                <TextInput
+                  value={induction[field]}
+                  onChangeText={(v) => setTraineeField(field, v)}
+                  placeholder={placeholder}
+                  placeholderTextColor={colors.textOnDarkMuted}
+                  maxLength={MAX_TRAINEE_NAME}
+                  accessibilityLabel={label.toLowerCase()}
+                  style={styles.input}
+                  autoCorrect={false}
+                  returnKeyType="done"
+                />
+              </View>
+            ))}
             {certified ? (
               <View style={styles.certBody}>
                 <Text style={styles.certName}>{induction.traineeName.trim() || 'Trainee'}</Text>
@@ -259,7 +292,8 @@ export default function InductionScreen() {
                   queueing, routes, fuel planning and site safety basics.
                 </Text>
                 <Text style={styles.certDate}>
-                  Issued {new Date(induction.certifiedAt!).toLocaleDateString()}
+                  Issued {new Date(induction.certifiedAt!).toLocaleDateString()} · valid until{' '}
+                  {new Date(expiresAt!).toLocaleDateString()}
                 </Text>
                 <Text style={styles.certNote}>
                   Game training record only — always complete your site’s official induction.
@@ -271,6 +305,12 @@ export default function InductionScreen() {
                   onPress={exportCertificate}
                   disabled={exporting}
                 />
+              </View>
+            ) : expired ? (
+              <View style={styles.certBody}>
+                <Text style={styles.certExpired}>Certificate expired on {new Date(expiresAt!).toLocaleDateString()}</Text>
+                <Text style={styles.certText}>Inductions must be renewed every year. Renew to retake the modules and practical checks.</Text>
+                <PrimaryButton label="RENEW INDUCTION" icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />} onPress={confirmRenew} />
               </View>
             ) : (
               <Text style={styles.certLocked}>
@@ -285,6 +325,7 @@ export default function InductionScreen() {
 }
 
 const styles = StyleSheet.create({
+  certExpired: { ...typography.label, color: colors.warning },
   reportButton: { backgroundColor: colors.card },
   hazardHeading: { ...typography.caption, color: colors.textOnDark, fontWeight: '800', letterSpacing: 1, marginTop: spacing.sm },
   bg: { flex: 1, backgroundColor: colors.surface },

@@ -16,6 +16,8 @@ import {
   SAVE_VERSION,
   applyInductionQuiz,
   applyHazardRun,
+  renewInduction,
+  setTraineeField,
   applyPrestartRun,
   applyLevelResult,
   applyModeResult,
@@ -25,6 +27,7 @@ import {
   type QuizAttempt,
   migrateSave,
   type HazardRunInput,
+  type TraineeField,
   type PrestartRunInput,
   type LevelResultInput,
   type SaveData,
@@ -51,6 +54,8 @@ interface ProgressionActions {
   resetProgress: () => void;
   recordInductionQuiz: (moduleId: string, attempt: QuizAttempt, allModuleIds: readonly string[]) => void;
   setTraineeName: (name: string) => void;
+  setTraineeField: (field: TraineeField, value: string) => void;
+  renewInduction: () => void;
   recordHazardRun: (sceneId: string, run: HazardRunInput) => void;
   recordPrestartRun: (scenarioId: string, run: PrestartRunInput) => void;
 }
@@ -114,6 +119,14 @@ export const useProgression = create<ProgressionStore>()(
 
       setTraineeName: (name) => {
         set(setTraineeName(getCurrentSave(), name));
+      },
+
+      setTraineeField: (field, value) => {
+        set(setTraineeField(getCurrentSave(), field, value));
+      },
+
+      renewInduction: () => {
+        set(renewInduction(getCurrentSave()));
       },
 
       recordHazardRun: (sceneId, run) => {

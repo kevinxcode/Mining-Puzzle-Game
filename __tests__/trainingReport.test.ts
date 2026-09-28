@@ -1,4 +1,4 @@
-import { buildTrainingReportCsv } from '@/game/induction/report';
+import { BOM, buildTrainingReportCsv } from '@/game/induction/report';
 import { buildCertificateHtml } from '@/game/induction/certificate';
 import { INDUCTION_MODULES } from '@/game/induction/modules';
 import { HAZARD_SCENES } from '@/game/induction/hazards';
@@ -18,23 +18,25 @@ function sample(): InductionState {
 
 describe('training report CSV', () => {
   const csv = buildTrainingReportCsv(sample(), T);
-  const lines = csv.replace(/^﻿/, '').trim().split('\n');
+  const lines = csv.replace(BOM, '').trim().split('\n');
 
   test('starts with a UTF-8 BOM so Excel shows "·" and other symbols correctly', () => {
     expect(csv.charCodeAt(0)).toBe(0xfeff);
   });
 
   test('has a header and one row per module, hazard scene and pre-start check', () => {
-    expect(lines[0]).toBe('Trainee,Activity type,Activity,Status,Best score,Attempts,Passed on,Report date');
+    expect(lines[0]).toBe(
+      'Trainee,Employee ID,Site,Company,Activity type,Activity,Status,Best score,Attempts,Passed on,Certificate valid until,Report date',
+    );
     expect(lines.length - 1).toBe(INDUCTION_MODULES.length + HAZARD_SCENES.length + PRESTART_SCENARIOS.length);
   });
 
   test('escapes commas and quotes in the trainee name', () => {
-    expect(lines[1].startsWith('"Budi, ""BS"" Santoso",Module,')).toBe(true);
+    expect(lines[1].startsWith('"Budi, ""BS"" Santoso",,,,Module,')).toBe(true);
   });
 
   test('reports passed, in-progress and not-started rows', () => {
-    expect(csv).toContain(`Module,${INDUCTION_MODULES[0].title},Passed,3/3,2,2026-09-28,2026-09-28`);
+    expect(csv).toContain(`Module,${INDUCTION_MODULES[0].title},Passed,3/3,2,2026-09-28,,2026-09-28`);
     expect(csv).toContain(`Hazard spotting,${HAZARD_SCENES[0].title},Passed,4/4,1,2026-09-28`);
     expect(csv).toContain(`Pre-start check,${PRESTART_SCENARIOS[2].title},In progress,7/8,3,,`);
     expect(csv).toContain(`Module,${INDUCTION_MODULES[1].title},Not started,,0,,`);
@@ -42,7 +44,7 @@ describe('training report CSV', () => {
 
   test('falls back to "Trainee" without a name', () => {
     const s = createDefaultInduction();
-    expect(buildTrainingReportCsv(s, T).replace(/^﻿/, '').split('\n')[1].startsWith('Trainee,Module,')).toBe(true);
+    expect(buildTrainingReportCsv(s, T).replace(BOM, '').split('\n')[1].startsWith('Trainee,,,,Module,')).toBe(true);
   });
 });
 

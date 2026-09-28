@@ -59,6 +59,10 @@ export interface InductionState {
   modules: Record<string, InductionModuleRecord>;
   /** Player-entered name for the certificate (stored locally only). */
   traineeName: string;
+  /** Optional trainee identity printed on the certificate and report. */
+  employeeId: string;
+  site: string;
+  company: string;
   /** Timestamp when all modules were first completed. */
   certifiedAt: number | null;
   /** Hazard-spotting results per scene id. */
@@ -186,7 +190,7 @@ export function createDefaultSave(): SaveData {
 }
 
 export function createDefaultInduction(): InductionState {
-  return { modules: {}, traineeName: '', certifiedAt: null, hazards: {}, prestart: {} };
+  return { modules: {}, traineeName: '', employeeId: '', site: '', company: '', certifiedAt: null, hazards: {}, prestart: {} };
 }
 
 export function serializeSave(data: SaveData): string {
@@ -273,6 +277,9 @@ function migrateInduction(raw: unknown): InductionState {
   return {
     modules,
     traineeName: typeof data.traineeName === 'string' ? data.traineeName.slice(0, MAX_TRAINEE_NAME) : '',
+    employeeId: typeof data.employeeId === 'string' ? data.employeeId.slice(0, MAX_TRAINEE_NAME) : '',
+    site: typeof data.site === 'string' ? data.site.slice(0, MAX_TRAINEE_NAME) : '',
+    company: typeof data.company === 'string' ? data.company.slice(0, MAX_TRAINEE_NAME) : '',
     certifiedAt: typeof data.certifiedAt === 'number' ? data.certifiedAt : null,
     hazards: migrateHazards(data.hazards),
     prestart: migratePrestart(data.prestart),
@@ -395,9 +402,50 @@ export function applyInductionQuiz(
 }
 
 export function setTraineeName(save: SaveData, name: string): SaveData {
+  return setTraineeField(save, 'traineeName', name);
+}
+
+export type TraineeField = 'traineeName' | 'employeeId' | 'site' | 'company';
+
+export function setTraineeField(save: SaveData, field: TraineeField, value: string): SaveData {
   return {
     ...save,
-    induction: { ...save.induction, traineeName: name.replace(/\s+/g, ' ').trimStart().slice(0, MAX_TRAINEE_NAME) },
+    induction: { ...save.induction, [field]: value.replace(/\s+/g, ' ').trimStart().slice(0, MAX_TRAINEE_NAME) },
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Certificate validity                                                */
+/* ------------------------------------------------------------------ */
+
+/** Induction certificates must be renewed after this many days. */
+export const CERTIFICATE_VALIDITY_DAYS = 365;
+const DAY_MS_CERT = 86_400_000;
+
+export function certificateExpiresAt(induction: InductionState): number | null {
+  return induction.certifiedAt === null ? null : induction.certifiedAt + CERTIFICATE_VALIDITY_DAYS * DAY_MS_CERT;
+}
+
+export function certificateStatus(induction: InductionState, now: number): 'none' | 'valid' | 'expired' {
+  const expires = certificateExpiresAt(induction);
+  if (expires === null) return 'none';
+  return now < expires ? 'valid' : 'expired';
+}
+
+/** Starts a new induction cycle: passes and certificate cleared, identity and attempt history kept. */
+export function renewInduction(save: SaveData): SaveData {
+  const i = save.induction;
+  const clear = <T extends object>(records: Record<string, T>, key: keyof T): Record<string, T> =>
+    Object.fromEntries(Object.entries(records).map(([id, r]) => [id, { ...r, [key]: null }]));
+  return {
+    ...save,
+    induction: {
+      ...i,
+      certifiedAt: null,
+      modules: clear(i.modules, 'completedAt'),
+      hazards: clear(i.hazards, 'passedAt'),
+      prestart: clear(i.prestart, 'passedAt'),
+    },
   };
 }
 
