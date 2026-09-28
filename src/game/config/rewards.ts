@@ -11,3 +11,16 @@ export const scoreWeights = {
   perLiterSaved: 0.5,
   perJamPenalty: 15,
 } as const;
+/** Replay-mode payouts (kept modest so modes never out-earn the campaign). */
+export const modeRewards = {
+  /** Paid once per calendar day for the first daily win. */
+  dailyCoins: 150,
+  dailyXp: 80,
+  /** Extra coins per streak day, capped at dailyStreakCap days. */
+  dailyStreakBonus: 25,
+  dailyStreakCap: 7,
+  /** Per cleared endless shift: base + shift × perShift. */
+  endlessCoinsBase: 20,
+  endlessCoinsPerShift: 10,
+  endlessXpPerShift: 20,
+} as const;

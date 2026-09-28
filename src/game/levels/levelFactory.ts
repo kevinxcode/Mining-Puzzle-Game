@@ -28,6 +28,7 @@ import {
   type MapTemplateId,
 } from './maps';
 import { LEVEL_SEEDS, type LevelSeed } from './levelTable';
+import { resolveModeLevel } from './modeLevels';
 
 export interface RegionDef {
   id: number;
@@ -390,7 +391,15 @@ function buildStars(
   return { ...base, ...seed.stars };
 }
 
-function buildLevel(levelNumber: number, seed: LevelSeed): LevelConfig {
+/** Overrides used by replay modes (daily / endless) that reuse campaign seeds. */
+export interface BuildLevelOptions {
+  id?: string;
+  name?: string;
+  /** PRNG seed for scripted event timing (defaults to the level number). */
+  rngSeed?: number;
+}
+
+export function buildLevel(levelNumber: number, seed: LevelSeed, options: BuildLevelOptions = {}): LevelConfig {
   const region = regionOfLevel(levelNumber);
   const materials = seed.materials ?? REGION_MATERIALS[region.id] ?? (['ore'] as MaterialTypeId[]);
   const map = buildMap(seed.template, { materials });
@@ -448,7 +457,7 @@ function buildLevel(levelNumber: number, seed: LevelSeed): LevelConfig {
     };
   });
 
-  const events = buildEvents(levelNumber, seed, map, seed.target, seed.time);
+  const events = buildEvents(options.rngSeed ?? levelNumber, seed, map, seed.target, seed.time);
   // Budget covers scripted target increases too.
   const finalTarget =
     seed.target + events.reduce((sum, e) => sum + (e.type === 'target-increase' ? e.amount ?? 0 : 0), 0);
@@ -456,8 +465,9 @@ function buildLevel(levelNumber: number, seed: LevelSeed): LevelConfig {
   const materialNames = map.materials.map((m) => m.name).join(', ');
 
   return {
-    id: String(levelNumber),
+    id: options.id ?? String(levelNumber),
     name:
+      options.name ??
       LEVEL_NAMES[region.id - 1]?.[(levelNumber - region.startLevel) % 10] ??
       `Level ${levelNumber}`,
     regionId: region.id,
@@ -500,7 +510,7 @@ export function regionOfLevel(levelNumber: number): RegionDef {
 export const LEVELS: LevelConfig[] = LEVEL_SEEDS.map((seed, i) => buildLevel(i + 1, seed));
 
 export function getLevelById(id: string): LevelConfig | undefined {
-  return LEVELS.find((l) => l.id === id);
+  return LEVELS.find((l) => l.id === id) ?? resolveModeLevel(id);
 }
 
 export function getLevelByNumber(levelNumber: number): LevelConfig {

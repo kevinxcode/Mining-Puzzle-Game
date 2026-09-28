@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   BarChart3,
   ChevronRight,
+  CalendarDays,
   Coins,
   GraduationCap,
   Map as MapIcon,
@@ -24,6 +25,7 @@ import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, ty
 import { LEVELS, getLevelByNumber } from '@/game/levels/levelFactory';
 import { INDUCTION_MODULE_IDS } from '@/game/induction/modules';
 import { inductionProgress, xpProgress } from '@/state/save';
+import { localDateKey } from '@/game/levels/modeLevels';
 import { useProgression } from '@/state/progressionStore';
 import { formatNumber } from '@/utils/format';
 import { FadeInView } from '@/components/FadeInView';
@@ -68,6 +70,9 @@ export default function HomeScreen() {
     router.push(path);
   };
 
+  const modes = useProgression((s) => s.modes);
+  const dailyDoneToday = modes.daily.lastWinDate === localDateKey();
+
   const menu = [
     { label: 'CAMPAIGN', detail: `${Object.keys(levelRecords).length} / ${LEVELS.length} levels`, Icon: MapIcon, tint: colors.secondary, path: '/campaign' },
     {
@@ -76,6 +81,13 @@ export default function HomeScreen() {
       Icon: GraduationCap,
       tint: colors.info,
       path: '/induction',
+    },
+    {
+      label: 'PLAY MODES',
+      detail: dailyDoneToday ? `Daily done · streak ${modes.daily.streak}` : 'Daily challenge ready',
+      Icon: CalendarDays,
+      tint: colors.info,
+      path: '/modes',
     },
     { label: 'EQUIPMENT', detail: 'Fleet & upgrades', Icon: Wrench, tint: colors.primary, path: '/equipment' },
     { label: 'STATISTICS', detail: 'Career totals', Icon: BarChart3, tint: colors.success, path: '/statistics' },

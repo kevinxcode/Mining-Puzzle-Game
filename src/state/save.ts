@@ -5,12 +5,15 @@
  */
 
 import { balance } from '../game/config/balance';
+import { UPGRADES, upgradeCost } from '../game/config/equipment';
+import { modeRewards } from '../game/config/rewards';
+import { parseModeLevelId } from '../game/levels/modeLevels';
 
 /**
  * v1: campaign progression.
  * v2: adds `induction` (Site Induction training progress + trainee name).
  */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const SAVE_KEY = 'miningflow.save';
 
 export interface LevelRecord {
@@ -70,6 +73,30 @@ export interface SaveData {
   settings: SettingsState;
   lastPlayedLevelId: string | null;
   induction: InductionState;
+  modes: ModesState;
+}
+
+export interface ModesState {
+  daily: {
+    /** Date (YYYY-MM-DD) of the last paid daily win. */
+    lastWinDate: string | null;
+    streak: number;
+    /** Best score on lastWinDate / today's attempts. */
+    bestScoreDate: string | null;
+    bestScoreToday: number;
+    totalWins: number;
+  };
+  endless: {
+    bestShift: number;
+    bestTons: number;
+  };
+}
+
+export function createDefaultModes(): ModesState {
+  return {
+    daily: { lastWinDate: null, streak: 0, bestScoreDate: null, bestScoreToday: 0, totalWins: 0 },
+    endless: { bestShift: 0, bestTons: 0 },
+  };
 }
 
 export interface LevelResultInput {
@@ -113,6 +140,7 @@ export function createDefaultSave(): SaveData {
     settings: { music: true, sfx: true, haptics: true },
     lastPlayedLevelId: null,
     induction: createDefaultInduction(),
+    modes: createDefaultModes(),
   };
 }
 
@@ -141,6 +169,25 @@ export function deserializeSave(raw: string): SaveData {
 }
 
 /** Merges partial/older saves into a complete current-version save. */
+function migrateModes(data: Partial<ModesState> | undefined): ModesState {
+  const base = createDefaultModes();
+  const num = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
+  const str = (v: unknown) => (typeof v === 'string' ? v : null);
+  return {
+    daily: {
+      lastWinDate: str(data?.daily?.lastWinDate),
+      streak: num(data?.daily?.streak, base.daily.streak),
+      bestScoreDate: str(data?.daily?.bestScoreDate),
+      bestScoreToday: num(data?.daily?.bestScoreToday, 0),
+      totalWins: num(data?.daily?.totalWins, 0),
+    },
+    endless: {
+      bestShift: num(data?.endless?.bestShift, 0),
+      bestTons: num(data?.endless?.bestTons, 0),
+    },
+  };
+}
+
 export function migrateSave(data: Partial<SaveData> & { version?: number }): SaveData {
   const base = createDefaultSave();
   const merged: SaveData = {
@@ -152,6 +199,7 @@ export function migrateSave(data: Partial<SaveData> & { version?: number }): Sav
     statistics: { ...base.statistics, ...(data.statistics ?? {}) },
     settings: { ...base.settings, ...(data.settings ?? {}) },
     induction: migrateInduction(data.induction),
+    modes: migrateModes(data.modes),
     version: SAVE_VERSION,
   };
   return merged;
@@ -268,11 +316,33 @@ export interface ApplyLevelResultResult {
   coinsGranted: number;
 }
 
+/** Career statistics shared by campaign and mode runs (mutates `stats`). */
+function accumulateRunStats(stats: StatisticsState, result: LevelResultInput): void {
+  stats.attempts += 1;
+  stats.totalTonsMoved += result.tonsMoved;
+  stats.totalTrips += result.trips;
+  stats.totalFuelUsed += result.fuelUsed;
+  stats.totalPlaytimeSeconds += result.playtimeSeconds;
+  stats.averageEfficiency =
+    Math.round((stats.averageEfficiency + (result.efficiency - stats.averageEfficiency) / stats.attempts) * 10) /
+    10;
+  stats.bestProductionRate = Math.max(stats.bestProductionRate, result.productionRate);
+  if (result.success) {
+    stats.bestCompletionSeconds =
+      stats.bestCompletionSeconds === null
+        ? result.elapsedSeconds
+        : Math.min(stats.bestCompletionSeconds, result.elapsedSeconds);
+  }
+}
+
 export function applyLevelResult(
   save: SaveData,
   levelId: string,
   result: LevelResultInput,
 ): ApplyLevelResultResult {
+  if (parseModeLevelId(levelId)) {
+    throw new Error(`applyLevelResult: "${levelId}" is a mode level — use applyModeResult`);
+  }
   const next: SaveData = {
     ...save,
     levels: { ...save.levels },
@@ -299,21 +369,7 @@ export function applyLevelResult(
   }
 
   const stats = next.statistics;
-  stats.attempts += 1;
-  stats.totalTonsMoved += result.tonsMoved;
-  stats.totalTrips += result.trips;
-  stats.totalFuelUsed += result.fuelUsed;
-  stats.totalPlaytimeSeconds += result.playtimeSeconds;
-  stats.averageEfficiency =
-    Math.round((stats.averageEfficiency + (result.efficiency - stats.averageEfficiency) / stats.attempts) * 10) /
-    10;
-  stats.bestProductionRate = Math.max(stats.bestProductionRate, result.productionRate);
-  if (result.success) {
-    stats.bestCompletionSeconds =
-      stats.bestCompletionSeconds === null
-        ? result.elapsedSeconds
-        : Math.min(stats.bestCompletionSeconds, result.elapsedSeconds);
-  }
+  accumulateRunStats(stats, result);
   stats.levelsCompleted = Object.keys(next.levels).length;
   stats.threeStarLevels = Object.values(next.levels).filter((r) => r.stars >= 3).length;
 
@@ -354,4 +410,92 @@ export function xpProgress(xp: number): {
     currentLevelXp: totalXpForPlayerLevel(level),
     nextLevelXp: totalXpForPlayerLevel(level + 1),
   };
+}
+/* ------------------------------------------------------------------ */
+/* Upgrade purchases (pure, testable)                                  */
+/* ------------------------------------------------------------------ */
+
+export interface UpgradePurchaseResult {
+  save: SaveData;
+  ok: boolean;
+}
+
+/** Buys one level of an upgrade: cost comes from config, max level enforced. */
+export function applyUpgradePurchase(save: SaveData, upgradeId: string): UpgradePurchaseResult {
+  const def = UPGRADES.find((u) => u.id === upgradeId);
+  if (!def) return { save, ok: false };
+  const level = save.upgrades[upgradeId] ?? 0;
+  if (level >= balance.maxUpgradeLevel) return { save, ok: false };
+  const cost = upgradeCost(save.upgrades, def);
+  if (save.coins < cost) return { save, ok: false };
+  return {
+    ok: true,
+    save: {
+      ...save,
+      coins: save.coins - cost,
+      upgrades: { ...save.upgrades, [upgradeId]: level + 1 },
+    },
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Replay-mode results (daily / endless) — never touch campaign records */
+/* ------------------------------------------------------------------ */
+
+const DAY_MS = 86_400_000;
+
+function daysBetween(fromDate: string, toDate: string): number {
+  return Math.round((Date.parse(toDate) - Date.parse(fromDate)) / DAY_MS);
+}
+
+export function applyModeResult(
+  save: SaveData,
+  levelId: string,
+  result: LevelResultInput,
+): ApplyLevelResultResult {
+  const ref = parseModeLevelId(levelId);
+  if (!ref) throw new Error(`applyModeResult: "${levelId}" is not a mode level`);
+
+  const next: SaveData = {
+    ...save,
+    statistics: { ...save.statistics },
+    modes: {
+      daily: { ...save.modes.daily },
+      endless: { ...save.modes.endless },
+    },
+  };
+  accumulateRunStats(next.statistics, result);
+
+  let xpGranted = 0;
+  let coinsGranted = 0;
+  if (ref.mode === 'daily') {
+    const daily = next.modes.daily;
+    if (daily.bestScoreDate !== ref.date) {
+      daily.bestScoreDate = ref.date;
+      daily.bestScoreToday = 0;
+    }
+    if (result.success) {
+      daily.bestScoreToday = Math.max(daily.bestScoreToday, result.score);
+      if (daily.lastWinDate !== ref.date) {
+        const consecutive = daily.lastWinDate !== null && daysBetween(daily.lastWinDate, ref.date) === 1;
+        daily.streak = consecutive ? daily.streak + 1 : 1;
+        daily.lastWinDate = ref.date;
+        daily.totalWins += 1;
+        xpGranted = modeRewards.dailyXp;
+        coinsGranted =
+          modeRewards.dailyCoins +
+          modeRewards.dailyStreakBonus * Math.min(daily.streak, modeRewards.dailyStreakCap);
+      }
+    }
+  } else if (result.success) {
+    const endless = next.modes.endless;
+    endless.bestShift = Math.max(endless.bestShift, ref.shift);
+    endless.bestTons = Math.max(endless.bestTons, result.tonsMoved);
+    xpGranted = modeRewards.endlessXpPerShift;
+    coinsGranted = modeRewards.endlessCoinsBase + ref.shift * modeRewards.endlessCoinsPerShift;
+  }
+
+  next.xp += xpGranted;
+  next.coins += coinsGranted;
+  return { save: next, rewarded: xpGranted > 0 || coinsGranted > 0, xpGranted, coinsGranted };
 }

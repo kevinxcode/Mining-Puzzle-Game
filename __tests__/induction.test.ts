@@ -145,8 +145,8 @@ describe('induction progress save', () => {
       lastPlayedLevelId: '1',
     });
     const restored = deserializeSave(v1);
-    expect(SAVE_VERSION).toBe(2);
-    expect(restored.version).toBe(2);
+    expect(SAVE_VERSION).toBeGreaterThanOrEqual(2);
+    expect(restored.version).toBe(SAVE_VERSION);
     expect(restored.xp).toBe(300);
     expect(restored.levels['1'].stars).toBe(2);
     expect(restored.settings.music).toBe(false);

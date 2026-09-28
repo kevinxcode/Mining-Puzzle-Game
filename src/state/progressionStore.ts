@@ -16,6 +16,8 @@ import {
   SAVE_VERSION,
   applyInductionQuiz,
   applyLevelResult,
+  applyModeResult,
+  applyUpgradePurchase,
   createDefaultSave,
   setTraineeName,
   type QuizAttempt,
@@ -24,6 +26,7 @@ import {
   type SaveData,
   type SettingsState,
 } from './save';
+import { parseModeLevelId } from '@/game/levels/modeLevels';
 
 export interface LevelResultOutcome {
   rewarded: boolean;
@@ -38,7 +41,7 @@ interface ProgressionActions {
     result: LevelResultInput,
     flags: ResultFlags,
   ) => LevelResultOutcome;
-  buyUpgrade: (upgradeId: string, cost: number) => boolean;
+  buyUpgrade: (upgradeId: string) => boolean;
   toggleSetting: (key: keyof SettingsState) => void;
   setLastPlayed: (levelId: string) => void;
   resetProgress: () => void;
@@ -60,7 +63,10 @@ export const useProgression = create<ProgressionStore>()(
       ...createDefaultSave(),
 
       recordLevelResult: (levelId, result, flags) => {
-        const applied = applyLevelResult(get(), levelId, result);
+        // Daily / endless runs keep their own bookkeeping and never touch campaign records.
+        const applied = parseModeLevelId(levelId)
+          ? applyModeResult(get(), levelId, result)
+          : applyLevelResult(get(), levelId, result);
         const newAchievements = evaluateAchievements(applied.save, flags);
         const merged: SaveData = {
           ...applied.save,
@@ -79,15 +85,10 @@ export const useProgression = create<ProgressionStore>()(
         };
       },
 
-      buyUpgrade: (upgradeId, cost) => {
-        const current = get();
-        if (current.coins < cost) return false;
-        set({
-          ...current,
-          coins: current.coins - cost,
-          upgrades: { ...current.upgrades, [upgradeId]: (current.upgrades[upgradeId] ?? 0) + 1 },
-        });
-        return true;
+      buyUpgrade: (upgradeId) => {
+        const purchase = applyUpgradePurchase(get(), upgradeId);
+        if (purchase.ok) set(purchase.save);
+        return purchase.ok;
       },
 
       toggleSetting: (key) => {
@@ -130,6 +131,7 @@ export const useProgression = create<ProgressionStore>()(
         settings: state.settings,
         lastPlayedLevelId: state.lastPlayedLevelId,
         induction: state.induction,
+        modes: state.modes,
       }),
       migrate: (persisted) => migrateSave((persisted ?? {}) as Partial<SaveData>),
       merge: (persisted, current) => {
@@ -166,5 +168,6 @@ export function getCurrentSave(): SaveData {
     settings: state.settings,
     lastPlayedLevelId: state.lastPlayedLevelId,
     induction: state.induction,
+    modes: state.modes,
   };
 }

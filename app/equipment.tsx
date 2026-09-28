@@ -13,6 +13,8 @@ import {
   upgradeCost,
   upgradeLevelOf,
   type EquipmentCatalogEntry,
+  isEquipmentUnlocked,
+  upgradeEffectLabel,
 } from '@/game/config/equipment';
 import { balance } from '@/game/config/balance';
 import { playerLevelFromXp } from '@/state/save';
@@ -29,9 +31,10 @@ export default function EquipmentScreen() {
   const upgrades = useProgression((s) => s.upgrades);
   const buyUpgrade = useProgression((s) => s.buyUpgrade);
   const playerLevel = playerLevelFromXp(xp);
+  const levelsCompleted = useProgression((s) => s.statistics.levelsCompleted);
 
   const renderEntry = (entry: EquipmentCatalogEntry, index: number) => {
-    const unlocked = playerLevel >= entry.unlockAtPlayerLevel;
+    const unlocked = isEquipmentUnlocked(entry, levelsCompleted);
     return (
       <FadeInView
         key={entry.id}
@@ -41,7 +44,7 @@ export default function EquipmentScreen() {
         <View
           style={styles.entryRow}
           accessible
-          accessibilityLabel={`${entry.name}: ${unlocked ? entry.details : `locked, unlocks at player level ${entry.unlockAtPlayerLevel}`}`}
+          accessibilityLabel={`${entry.name}: ${unlocked ? entry.details : `locked, unlocks after completing ${entry.unlockAfterLevels} campaign levels`}`}
         >
           <View style={[styles.entryIcon, !unlocked && styles.entryIconLocked]}>
             {!unlocked ? (
@@ -55,7 +58,7 @@ export default function EquipmentScreen() {
           <View style={styles.entryInfo}>
             <Text style={styles.entryName}>{entry.name}</Text>
             <Text style={styles.entryDetails}>
-              {unlocked ? entry.details : `Unlocks at player level ${entry.unlockAtPlayerLevel}`}
+              {unlocked ? entry.details : `Unlocks after ${entry.unlockAfterLevels} campaign levels (${levelsCompleted}/${entry.unlockAfterLevels})`}
             </Text>
           </View>
         </View>
@@ -99,6 +102,7 @@ export default function EquipmentScreen() {
                   {def.name} <Text style={styles.upgradeTarget}>({def.target})</Text>
                 </Text>
                 <Text style={styles.upgradeDesc}>{def.description}</Text>
+                <Text style={styles.upgradeEffect}>{upgradeEffectLabel(def, level)}</Text>
                 <View style={styles.pips} accessible accessibilityLabel={`Level ${level} of ${balance.maxUpgradeLevel}`}>
                   {Array.from({ length: balance.maxUpgradeLevel }, (_, p) => (
                     <View key={p} style={[styles.pip, p < level && styles.pipOn]} />
@@ -110,7 +114,7 @@ export default function EquipmentScreen() {
                 accessibilityLabel={maxed ? `${def.name} maxed` : `Buy ${def.name} for ${cost} coins`}
                 icon={maxed ? undefined : <Coins size={iconSizes.xs} color={colors.textOnDark} />}
                 disabled={maxed || !affordable}
-                onPress={() => buyUpgrade(def.id, cost)}
+                onPress={() => buyUpgrade(def.id)}
                 style={styles.upgradeButton}
               />
             </FadeInView>
@@ -128,6 +132,7 @@ export default function EquipmentScreen() {
 }
 
 const styles = StyleSheet.create({
+  upgradeEffect: { ...typography.caption, color: colors.info, fontWeight: '700' },
   safe: { flex: 1, backgroundColor: colors.background },
   coinsBadge: {
     flexDirection: 'row',

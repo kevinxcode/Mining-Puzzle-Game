@@ -34,3 +34,7 @@ yarn-error.*
 Thumbs.db
 *.tsbuildinfo
 coverage/
+
+# Release signing secrets (keep a private backup!)
+/key/*
+!/key/README.md

@@ -34,7 +34,8 @@
           "backgroundColor": "#1C1F24"
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "./plugins/withReleaseSigning"
     ]
   }
 }

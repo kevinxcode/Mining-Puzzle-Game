@@ -46,6 +46,7 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ProductionMeter } from '@/components/ProductionMeter';
 import { RouteSheet } from '@/components/RouteSheet';
 import { TutorialCoachmark } from '@/components/TutorialCoachmark';
+import { nextRouteAfter } from '@/game/levels/modeLevels';
 import { playSfx } from '@/services/audio';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
 
@@ -210,8 +211,7 @@ function GameScreen({ levelId }: { levelId: string }) {
 
   const nextLevel = () => {
     playSfx('tap');
-    const nextId = String(Math.min(TOTAL_LEVELS, Number(level.id) + 1));
-    router.replace(`/level/${nextId}`);
+    router.replace(nextRouteAfter(level.id, TOTAL_LEVELS) as never);
   };
 
   return (

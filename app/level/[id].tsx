@@ -21,6 +21,9 @@ import {
 } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { getLevelById, regionOfLevel } from '@/game/levels/levelFactory';
+import { parseModeLevelId, withFleetClass } from '@/game/levels/modeLevels';
+import { TRUCK_CLASSES, unlockedTruckClasses } from '@/game/config/equipment';
+import type { TruckClass } from '@/types/game';
 import { useProgression } from '@/state/progressionStore';
 import { formatClock } from '@/utils/format';
 import { FadeInView } from '@/components/FadeInView';
@@ -37,6 +40,7 @@ export default function BriefingScreen() {
   const level = getLevelById(String(params.id));
   const levelRecords = useProgression((s) => s.levels);
   const setLastPlayed = useProgression((s) => s.setLastPlayed);
+  const levelsCompleted = useProgression((s) => s.statistics.levelsCompleted);
   const [fleetOpen, setFleetOpen] = useState(false);
 
   if (!level) {
@@ -48,7 +52,15 @@ export default function BriefingScreen() {
   }
 
   const record = levelRecords[level.id];
-  const accent = regionOfLevel(Number(level.id)).accent;
+  const modeRef = parseModeLevelId(level.id);
+  // Mode levels reuse a campaign seed; `difficulty` holds that seed's level number.
+  const accent = regionOfLevel(level.difficulty).accent;
+  const baseModeId = level.id.replace(/@[A-Z]$/, '');
+  const fleetChoices = modeRef ? unlockedTruckClasses(levelsCompleted) : [];
+  const chooseFleet = (fleetClass: TruckClass | undefined) => {
+    playSfx('tap');
+    router.setParams({ id: withFleetClass(baseModeId, fleetClass) });
+  };
   const challenge = level.objectives.filter((o) => !o.bonus && o.kind !== 'tons');
   const bonus = level.objectives.filter((o) => o.bonus);
   const hasFuelStation = level.map.nodes.some((n) => n.type === 'fuel');
@@ -56,14 +68,15 @@ export default function BriefingScreen() {
   const start = () => {
     playSfx('tap');
     hapticMedium();
-    setLastPlayed(level.id);
+    // "Continue" on the home screen only ever points at the campaign.
+    if (!modeRef) setLastPlayed(level.id);
     router.replace(`/game/${level.id}`);
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScreenHeader
-        title={`Level ${level.id}`}
+        title={modeRef ? (modeRef.mode === 'daily' ? 'Daily Challenge' : `Endless · Shift ${modeRef.shift}`) : `Level ${level.id}`}
         subtitle={level.regionName}
         right={<StarRating count={record?.stars ?? 0} size={iconSizes.sm} />}
       />
@@ -96,6 +109,35 @@ export default function BriefingScreen() {
             </View>
           ) : null}
         </FadeInView>
+
+        {modeRef ? (
+          <FadeInView index={1}>
+            <Section icon={<Truck size={iconSizes.sm} color={colors.info} />} label="CHOOSE YOUR FLEET">
+              <Text style={styles.fleetHint}>
+                Swap every truck to one of your unlocked classes. Unlock more in the campaign.
+              </Text>
+              <View style={styles.fleetChips}>
+                {[undefined, ...fleetChoices].map((cls) => {
+                  const active = modeRef.fleetClass === cls;
+                  const label = cls ? TRUCK_CLASSES[cls].name : 'Mission fleet';
+                  return (
+                    <PressableScale
+                      key={cls ?? 'default'}
+                      onPress={() => chooseFleet(cls)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={`Fleet: ${label}`}
+                      style={[styles.fleetChip, active && styles.fleetChipActive]}
+                    >
+                      <Text style={[styles.fleetChipText, active && styles.fleetChipTextActive]}>{label}</Text>
+                      {cls ? <Text style={[styles.fleetChipMeta, active && styles.fleetChipTextActive]}>{TRUCK_CLASSES[cls].capacity} t</Text> : null}
+                    </PressableScale>
+                  );
+                })}
+              </View>
+            </Section>
+          </FadeInView>
+        ) : null}
 
         {challenge.length > 0 ? (
           <FadeInView index={1}>
@@ -190,6 +232,20 @@ function Section({ icon, label, children }: { icon: ReactNode; label: string; ch
 }
 
 const styles = StyleSheet.create({
+  fleetHint: { ...typography.caption, color: colors.textMuted },
+  fleetChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  fleetChip: {
+    minHeight: minTouchTarget,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+    justifyContent: 'center',
+  },
+  fleetChipActive: { backgroundColor: colors.surface },
+  fleetChipText: { ...typography.label, color: colors.text },
+  fleetChipMeta: { ...typography.caption, color: colors.textMuted },
+  fleetChipTextActive: { color: colors.textOnDark },
   safe: { flex: 1, backgroundColor: colors.background },
   container: {
     padding: spacing.lg,

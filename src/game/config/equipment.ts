@@ -16,8 +16,8 @@ export interface TruckClassSpec {
   /** Liters burned per road unit traveled. */
   fuelEfficiency: number;
   condition: number;
-  /** Player level required before this class appears in the catalog. */
-  unlockAtPlayerLevel: number;
+  /** Campaign levels the player must complete before this class unlocks (readme §20). */
+  unlockAfterLevels: number;
 }
 
 export const TRUCK_CLASSES: Record<TruckClass, TruckClassSpec> = {
@@ -28,7 +28,7 @@ export const TRUCK_CLASSES: Record<TruckClass, TruckClassSpec> = {
     speed: 4.2,
     fuelEfficiency: 0.09,
     condition: 100,
-    unlockAtPlayerLevel: 1,
+    unlockAfterLevels: 0,
   },
   Standard: {
     truckClass: 'Standard',
@@ -37,7 +37,7 @@ export const TRUCK_CLASSES: Record<TruckClass, TruckClassSpec> = {
     speed: 3.6,
     fuelEfficiency: 0.11,
     condition: 100,
-    unlockAtPlayerLevel: 1,
+    unlockAfterLevels: 0,
   },
   Heavy: {
     truckClass: 'Heavy',
@@ -46,7 +46,7 @@ export const TRUCK_CLASSES: Record<TruckClass, TruckClassSpec> = {
     speed: 3.2,
     fuelEfficiency: 0.14,
     condition: 100,
-    unlockAtPlayerLevel: 8,
+    unlockAfterLevels: 10,
   },
   Ultra: {
     truckClass: 'Ultra',
@@ -55,7 +55,7 @@ export const TRUCK_CLASSES: Record<TruckClass, TruckClassSpec> = {
     speed: 3.0,
     fuelEfficiency: 0.16,
     condition: 100,
-    unlockAtPlayerLevel: 20,
+    unlockAfterLevels: 40,
   },
 };
 
@@ -68,7 +68,8 @@ export interface ExcavatorClassSpec {
   loadingSpeed: number;
   /** Liters burned per second while loading. */
   fuelBurn: number;
-  unlockAtPlayerLevel: number;
+  /** Campaign levels the player must complete before this class unlocks (readme §20). */
+  unlockAfterLevels: number;
 }
 
 export const EXCAVATOR_CLASSES: Record<ExcavatorClass, ExcavatorClassSpec> = {
@@ -77,28 +78,28 @@ export const EXCAVATOR_CLASSES: Record<ExcavatorClass, ExcavatorClassSpec> = {
     bucketCapacity: 8,
     loadingSpeed: 3.4,
     fuelBurn: 0.5,
-    unlockAtPlayerLevel: 1,
+    unlockAfterLevels: 0,
   },
   Standard: {
     name: 'Standard Excavator',
     bucketCapacity: 12,
     loadingSpeed: 4.6,
     fuelBurn: 0.7,
-    unlockAtPlayerLevel: 1,
+    unlockAfterLevels: 0,
   },
   Heavy: {
     name: 'Heavy Excavator',
     bucketCapacity: 18,
     loadingSpeed: 6.4,
     fuelBurn: 1.0,
-    unlockAtPlayerLevel: 10,
+    unlockAfterLevels: 20,
   },
   Ultra: {
     name: 'Ultra Excavator',
     bucketCapacity: 25,
     loadingSpeed: 8.4,
     fuelBurn: 1.3,
-    unlockAtPlayerLevel: 25,
+    unlockAfterLevels: 50,
   },
 };
 
@@ -233,7 +234,7 @@ export interface EquipmentCatalogEntry {
   name: string;
   className: string;
   details: string;
-  unlockAtPlayerLevel: number;
+  unlockAfterLevels: number;
 }
 
 export const EQUIPMENT_CATALOG: EquipmentCatalogEntry[] = [
@@ -243,14 +244,31 @@ export const EQUIPMENT_CATALOG: EquipmentCatalogEntry[] = [
     name: spec.name,
     className: spec.truckClass,
     details: `${spec.capacity} t · speed ${spec.speed.toFixed(2)} · ${spec.fuelEfficiency.toFixed(2)} L/unit`,
-    unlockAtPlayerLevel: spec.unlockAtPlayerLevel,
+    unlockAfterLevels: spec.unlockAfterLevels,
   })),
-  ...Object.values(EXCAVATOR_CLASSES).map((spec) => ({
-    id: `excavator:${spec.name}`,
+  ...(Object.entries(EXCAVATOR_CLASSES) as [ExcavatorClass, ExcavatorClassSpec][]).map(([key, spec]) => ({
+    id: `excavator:${key}`,
     kind: 'excavator' as const,
     name: spec.name,
     className: spec.name,
     details: `${spec.bucketCapacity} t bucket · ${spec.loadingSpeed.toFixed(1)} t/s loading`,
-    unlockAtPlayerLevel: spec.unlockAtPlayerLevel,
+    unlockAfterLevels: spec.unlockAfterLevels,
   })),
 ];
+export function isEquipmentUnlocked(entry: EquipmentCatalogEntry, levelsCompleted: number): boolean {
+  return levelsCompleted >= entry.unlockAfterLevels;
+}
+
+/** Truck classes the player can pick for a mode fleet, weakest first. */
+export function unlockedTruckClasses(levelsCompleted: number): TruckClass[] {
+  return (Object.keys(TRUCK_CLASSES) as TruckClass[]).filter(
+    (c) => levelsCompleted >= TRUCK_CLASSES[c].unlockAfterLevels,
+  );
+}
+
+/** "Now +12% · Next +18%" (or "Max +18%") for the equipment screen. */
+export function upgradeEffectLabel(def: UpgradeDef, level: number): string {
+  const pct = (lvl: number) => `${def.reduces ? '−' : '+'}${Math.round(def.effectPerLevel * lvl * 100)}%`;
+  if (level >= balance.maxUpgradeLevel) return `Max ${pct(balance.maxUpgradeLevel)}`;
+  return `Now ${pct(level)} · Next ${pct(level + 1)}`;
+}
