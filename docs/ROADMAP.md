@@ -47,7 +47,7 @@ Effort: **S** = days, **M** = 1–2 weeks, **L** = 3+ weeks (small team).
 |---|---|---|---|
 | 13 | ~~Hazard-spotting mini-game~~ | M | **Done** — 3 scenes (loading area, haul road, refuelling bay), 12 hazards, results saved |
 | 14 | ~~Pre-start inspection (P2H) checklist mini-game~~ | M | **Done** — 3 trucks × 8 items, OK/Defect + operate/tag-out decision, results saved |
-| 15 | Supervisor / HSE report export (completion, quiz scores, certificates as CSV/PDF) | M | What HSE needs to justify adoption |
+| 15 | ~~Supervisor / HSE report export~~ | M | **Done** — CSV training report (Excel-ready) + certificate PDF now lists hazard spotting and P2H results |
 | 16 | Trainee identity (employee ID, site, contractor) + certificate expiry / retake | M | Required for real induction records |
 | 17 | Content outside the app (modules/quizzes loaded from JSON) | M | Site-specific rules without an app release |
 | 18 | White-label company build (branding, custom levels, no ads) | M | Main revenue path identified in market research |

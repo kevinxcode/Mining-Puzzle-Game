@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { File, Paths } from 'expo-file-system';
 import { Alert, ImageBackground, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -14,6 +15,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  FileSpreadsheet,
   Share2,
   ShieldAlert,
 } from 'lucide-react-native';
@@ -30,6 +32,7 @@ import { Scrim } from '@/components/Scrim';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { buildCertificateHtml } from '@/game/induction/certificate';
+import { buildTrainingReportCsv } from '@/game/induction/report';
 
 const bgInduction = require('../../assets/images/bg-induction.png');
 
@@ -39,6 +42,26 @@ export default function InductionScreen() {
   const setTraineeName = useProgression((s) => s.setTraineeName);
   const progress = inductionProgress(induction, INDUCTION_MODULE_IDS);
   const [exporting, setExporting] = useState(false);
+
+  const exportReport = async () => {
+    setExporting(true);
+    try {
+      const name = (induction.traineeName.trim() || 'trainee').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      const file = new File(Paths.cache, `training-report-${name}-${new Date().toISOString().slice(0, 10)}.csv`);
+      if (file.exists) file.delete();
+      file.create();
+      file.write(buildTrainingReportCsv(induction, Date.now()));
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: 'Share training report', UTI: 'public.comma-separated-values-text' });
+      } else {
+        Alert.alert('Report saved', `Saved to ${file.uri}`);
+      }
+    } catch {
+      Alert.alert('Export failed', 'The training report could not be created. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const exportCertificate = async () => {
     setExporting(true);
@@ -199,6 +222,18 @@ export default function InductionScreen() {
             </PressableScale>
           </FadeInView>
 
+          <FadeInView index={INDUCTION_MODULES.length + 2}>
+            <PrimaryButton
+              label={exporting ? 'PREPARING…' : 'EXPORT TRAINING REPORT (CSV)'}
+              variant="outline"
+              icon={<FileSpreadsheet size={iconSizes.sm} color={colors.text} />}
+              accessibilityHint="Creates a spreadsheet of all induction results to send to your supervisor or HSE"
+              onPress={exportReport}
+              disabled={exporting}
+              style={styles.reportButton}
+            />
+          </FadeInView>
+
           <FadeInView index={INDUCTION_MODULES.length + 2} style={[styles.certCard, certified && styles.certCardDone]}>
             <View style={styles.certHeader}>
               <Award size={iconSizes.lg} color={certified ? colors.secondary : colors.textOnDarkMuted} />
@@ -250,6 +285,7 @@ export default function InductionScreen() {
 }
 
 const styles = StyleSheet.create({
+  reportButton: { backgroundColor: colors.card },
   hazardHeading: { ...typography.caption, color: colors.textOnDark, fontWeight: '800', letterSpacing: 1, marginTop: spacing.sm },
   bg: { flex: 1, backgroundColor: colors.surface },
   safe: { flex: 1 },
