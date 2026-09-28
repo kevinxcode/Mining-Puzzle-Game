@@ -22,6 +22,15 @@ import {
 
 type Listener = () => void;
 
+/** A truck's assignment before a player move — what undo restores. */
+interface UndoStep {
+  truckId: string;
+  excavatorId: string;
+  routeId: string;
+}
+
+const MAX_UNDO = 5;
+
 export class SimController {
   readonly level: LevelConfig;
   state: SimState;
@@ -31,6 +40,7 @@ export class SimController {
   private timer: ReturnType<typeof setInterval> | null = null;
   private lastFrame = 0;
   private accumulator = 0;
+  private history: UndoStep[] = [];
 
   constructor(level: LevelConfig, upgrades: Record<string, number> = {}) {
     this.level = level;
@@ -110,15 +120,49 @@ export class SimController {
   }
 
   assignTruck(truckId: string, excavatorId: string): boolean {
+    const step = this.snapshot(truckId);
     const ok = assignTruckInEngine(this.state, this.level, truckId, excavatorId);
+    if (ok && step) this.remember(step);
     this.notify();
     return ok;
   }
 
   setTruckRoute(truckId: string, routeId: string): boolean {
+    const step = this.snapshot(truckId);
     const ok = setTruckRouteInEngine(this.state, this.level, truckId, routeId);
+    if (ok && step) this.remember(step);
     this.notify();
     return ok;
+  }
+
+  get canUndo(): boolean {
+    return this.history.length > 0;
+  }
+
+  /** Reverts the last successful reassign/reroute. */
+  undo(): boolean {
+    const step = this.history.pop();
+    if (!step) return false;
+    const truck = this.state.trucks.find((t) => t.id === step.truckId);
+    if (!truck) return false;
+    if (truck.assignedExcavatorId !== step.excavatorId) {
+      assignTruckInEngine(this.state, this.level, step.truckId, step.excavatorId);
+    }
+    if (truck.routeId !== step.routeId) {
+      setTruckRouteInEngine(this.state, this.level, step.truckId, step.routeId);
+    }
+    this.notify();
+    return true;
+  }
+
+  private snapshot(truckId: string): UndoStep | null {
+    const truck = this.state.trucks.find((t) => t.id === truckId);
+    return truck ? { truckId, excavatorId: truck.assignedExcavatorId, routeId: truck.routeId } : null;
+  }
+
+  private remember(step: UndoStep): void {
+    this.history.push(step);
+    if (this.history.length > MAX_UNDO) this.history.shift();
   }
 
   sendToFuel(truckId: string): boolean {
@@ -131,6 +175,7 @@ export class SimController {
   reset(upgrades: Record<string, number> = {}): void {
     this.pause();
     this.state = createSimState(this.level, upgrades);
+    this.history = [];
     this.notify();
   }
 

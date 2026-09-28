@@ -13,6 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
   FastForward,
+  Lightbulb,
+  Undo2,
+  X,
   Pause,
   Play,
   Radio,
@@ -47,6 +50,7 @@ import { ProductionMeter } from '@/components/ProductionMeter';
 import { RouteSheet } from '@/components/RouteSheet';
 import { TutorialCoachmark } from '@/components/TutorialCoachmark';
 import { nextRouteAfter, resolveLevel } from '@/game/levels/modeLevels';
+import { computeHint, HINTS_PER_RUN, type Hint, type HintAction } from '@/game/engine/hintEngine';
 import { playSfx } from '@/services/audio';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
 
@@ -108,6 +112,8 @@ function GameScreen({ levelId }: { levelId: string }) {
   const [tutorialStep, setTutorialStep] = useState(0);
   const [tutorialDone, setTutorialDone] = useState(!level?.tutorialSteps);
   const [resultRecorded, setResultRecorded] = useState(false);
+  const [hintsLeft, setHintsLeft] = useState(HINTS_PER_RUN);
+  const [hint, setHint] = useState<Hint | null>(null);
   /** XP / coins actually paid for this run (replays only pay the difference). */
   const [grantedRewards, setGrantedRewards] = useState<{ xp: number; coins: number } | null>(null);
 
@@ -204,9 +210,35 @@ function GameScreen({ levelId }: { levelId: string }) {
   const replay = () => {
     playSfx('tap');
     setResultRecorded(false);
+    setHintsLeft(HINTS_PER_RUN);
+    setHint(null);
     setGrantedRewards(null);
     setTutorialDone(true);
     controller.reset(upgrades);
+  };
+
+  const showHint = () => {
+    if (hintsLeft === 0) return;
+    playSfx('tap');
+    setHint(computeHint(controller.state, level));
+    setHintsLeft(hintsLeft - 1);
+  };
+  const applyHint = (action: HintAction) => {
+    const ok =
+      action.kind === 'fuel'
+        ? controller.sendToFuel(action.truckId)
+        : action.kind === 'assign'
+          ? controller.assignTruck(action.truckId, action.excavatorId)
+          : controller.setTruckRoute(action.truckId, action.routeId);
+    if (ok) hapticSuccess();
+    else hapticWarning();
+    setHint(null);
+  };
+  const undoMove = () => {
+    if (controller.undo()) {
+      playSfx('tap');
+      hapticSuccess();
+    }
   };
 
   const nextLevel = () => {
@@ -252,6 +284,28 @@ function GameScreen({ levelId }: { levelId: string }) {
 
         {/* Mining map — the visual focus */}
         <View style={styles.mapWrap}>
+          {/* Hint + undo */}
+          <View style={styles.mapTools} pointerEvents="box-none">
+            <PressableScale
+              style={[styles.toolButton, hintsLeft === 0 && styles.toolDisabled]}
+              disabled={hintsLeft === 0 || finished}
+              onPress={showHint}
+              accessibilityRole="button"
+              accessibilityLabel={`Hint, ${hintsLeft} left`}
+            >
+              <Lightbulb size={iconSizes.sm} color={colors.secondary} />
+              <Text style={styles.toolCount}>{hintsLeft}</Text>
+            </PressableScale>
+            <PressableScale
+              style={[styles.toolButton, !controller.canUndo && styles.toolDisabled]}
+              disabled={!controller.canUndo || finished}
+              onPress={undoMove}
+              accessibilityRole="button"
+              accessibilityLabel="Undo last move"
+            >
+              <Undo2 size={iconSizes.sm} color={colors.textOnDark} />
+            </PressableScale>
+          </View>
           <GameMap
             level={level}
             trucks={state.trucks}
@@ -275,6 +329,20 @@ function GameScreen({ levelId }: { levelId: string }) {
               }
             }}
           />
+          {hint ? (
+            <Animated.View entering={FadeInUp} style={styles.hintCard} accessibilityLiveRegion="polite">
+              <Lightbulb size={iconSizes.sm} color={colors.secondary} />
+              <Text style={styles.hintText}>{hint.message}</Text>
+              {hint.action ? (
+                <PressableScale style={styles.hintApply} onPress={() => applyHint(hint.action!)} accessibilityRole="button" accessibilityLabel="Apply hint">
+                  <Text style={styles.hintApplyText}>APPLY</Text>
+                </PressableScale>
+              ) : null}
+              <PressableScale onPress={() => setHint(null)} accessibilityRole="button" accessibilityLabel="Close hint" hitSlop={10}>
+                <X size={iconSizes.sm} color={colors.textOnDarkMuted} />
+              </PressableScale>
+            </Animated.View>
+          ) : null}
         </View>
 
         {/* Production meter */}
@@ -427,6 +495,47 @@ const styles = StyleSheet.create({
   },
   feedText: { ...typography.caption, color: colors.textOnDark, flex: 1 },
   mapWrap: { flex: 1 },
+  mapTools: { position: 'absolute', top: spacing.sm, right: spacing.sm, zIndex: 5, gap: spacing.sm },
+  toolButton: {
+    width: minTouchTarget,
+    height: minTouchTarget,
+    borderRadius: minTouchTarget / 2,
+    backgroundColor: 'rgba(28,31,36,0.82)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toolDisabled: { opacity: 0.4 },
+  toolCount: {
+    position: 'absolute',
+    right: 2,
+    bottom: 2,
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.secondary,
+  },
+  hintCard: {
+    position: 'absolute',
+    left: spacing.sm,
+    right: spacing.sm,
+    bottom: spacing.sm,
+    zIndex: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    ...shadows.raised,
+  },
+  hintText: { ...typography.caption, color: colors.textOnDark, flex: 1, lineHeight: 18 },
+  hintApply: {
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+  },
+  hintApplyText: { ...typography.label, color: colors.textOnDark },
   controlBar: {
     flexDirection: 'row',
     alignItems: 'center',
