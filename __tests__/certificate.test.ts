@@ -7,7 +7,7 @@ function certifiedState(name: string): InductionState {
   for (const m of INDUCTION_MODULES) {
     modules[m.id] = { bestScore: 3, total: 3, completedAt: 1, attempts: 1 };
   }
-  return { modules, traineeName: name, certifiedAt: Date.UTC(2026, 8, 27), hazards: {} };
+  return { modules, traineeName: name, certifiedAt: Date.UTC(2026, 8, 27), hazards: {}, prestart: {} };
 }
 
 describe('induction certificate', () => {

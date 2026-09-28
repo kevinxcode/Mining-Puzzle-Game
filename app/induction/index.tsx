@@ -13,12 +13,14 @@ import {
   BookOpen,
   CheckCircle2,
   ChevronRight,
+  ClipboardCheck,
   Share2,
   ShieldAlert,
 } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { INDUCTION_MODULES, INDUCTION_MODULE_IDS } from '@/game/induction/modules';
 import { HAZARD_SCENES } from '@/game/induction/hazards';
+import { PRESTART_SCENARIOS } from '@/game/induction/prestart';
 import { MAX_TRAINEE_NAME, inductionProgress } from '@/state/save';
 import { useProgression } from '@/state/progressionStore';
 import { MODULE_ICONS } from '@/components/InductionArt';
@@ -144,6 +146,35 @@ export default function InductionScreen() {
                     <Text style={styles.moduleTitle}>{scene.title}</Text>
                     <Text style={styles.moduleSummary}>
                       {rec ? `${passedScene ? 'Cleared' : 'Try again'} · best ${rec.bestFound}/${rec.total}` : `Find ${scene.hazards.length} hazards`}
+                    </Text>
+                  </View>
+                  <ChevronRight size={iconSizes.md} color={colors.textMuted} />
+                </PressableScale>
+              </FadeInView>
+            );
+          })}
+
+          <Text style={styles.hazardHeading}>PRE-START CHECK (P2H)</Text>
+          {PRESTART_SCENARIOS.map((scenario, i) => {
+            const rec = induction.prestart[scenario.id];
+            const passedCheck = Boolean(rec?.passedAt);
+            return (
+              <FadeInView key={scenario.id} index={INDUCTION_MODULES.length + 4 + i}>
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel={`Pre-start check: ${scenario.title}${passedCheck ? ', passed' : ''}`}
+                  onPress={() => router.push(`/induction/prestart/${scenario.id}`)}
+                  style={[styles.glossaryCard, shadows.soft]}
+                >
+                  {passedCheck ? (
+                    <CheckCircle2 size={iconSizes.md} color={colors.success} />
+                  ) : (
+                    <ClipboardCheck size={iconSizes.md} color={colors.info} />
+                  )}
+                  <View style={styles.moduleInfo}>
+                    <Text style={styles.moduleTitle}>{scenario.title}</Text>
+                    <Text style={styles.moduleSummary}>
+                      {rec ? `${passedCheck ? 'Passed' : 'Try again'} · best ${rec.bestCorrect}/${rec.total}` : `${scenario.items.length}-point inspection`}
                     </Text>
                   </View>
                   <ChevronRight size={iconSizes.md} color={colors.textMuted} />

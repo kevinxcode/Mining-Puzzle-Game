@@ -63,6 +63,21 @@ export interface InductionState {
   certifiedAt: number | null;
   /** Hazard-spotting results per scene id. */
   hazards: Record<string, HazardRecord>;
+  /** Pre-start inspection (P2H) results per scenario id. */
+  prestart: Record<string, PrestartRecord>;
+}
+
+export interface PrestartRecord {
+  bestCorrect: number;
+  total: number;
+  attempts: number;
+  passedAt: number | null;
+}
+
+export interface PrestartRunInput {
+  correct: number;
+  total: number;
+  passed: boolean;
 }
 
 export interface HazardRecord {
@@ -171,7 +186,7 @@ export function createDefaultSave(): SaveData {
 }
 
 export function createDefaultInduction(): InductionState {
-  return { modules: {}, traineeName: '', certifiedAt: null, hazards: {} };
+  return { modules: {}, traineeName: '', certifiedAt: null, hazards: {}, prestart: {} };
 }
 
 export function serializeSave(data: SaveData): string {
@@ -260,6 +275,7 @@ function migrateInduction(raw: unknown): InductionState {
     traineeName: typeof data.traineeName === 'string' ? data.traineeName.slice(0, MAX_TRAINEE_NAME) : '',
     certifiedAt: typeof data.certifiedAt === 'number' ? data.certifiedAt : null,
     hazards: migrateHazards(data.hazards),
+    prestart: migratePrestart(data.prestart),
   };
 }
 
@@ -276,6 +292,41 @@ function migrateHazards(raw: unknown): Record<string, HazardRecord> {
     };
   }
   return out;
+}
+
+function migratePrestart(raw: unknown): Record<string, PrestartRecord> {
+  const out: Record<string, PrestartRecord> = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [id, rec] of Object.entries(raw as Record<string, Partial<PrestartRecord>>)) {
+    if (!rec || typeof rec !== 'object') continue;
+    out[id] = {
+      bestCorrect: typeof rec.bestCorrect === 'number' ? rec.bestCorrect : 0,
+      total: typeof rec.total === 'number' ? rec.total : 0,
+      attempts: typeof rec.attempts === 'number' ? rec.attempts : 0,
+      passedAt: typeof rec.passedAt === 'number' ? rec.passedAt : null,
+    };
+  }
+  return out;
+}
+
+/** Records one pre-start inspection run (best kept, first pass stamped once). */
+export function applyPrestartRun(save: SaveData, scenarioId: string, run: PrestartRunInput, now: number): SaveData {
+  const prev = save.induction.prestart[scenarioId];
+  return {
+    ...save,
+    induction: {
+      ...save.induction,
+      prestart: {
+        ...save.induction.prestart,
+        [scenarioId]: {
+          bestCorrect: Math.max(prev?.bestCorrect ?? 0, run.correct),
+          total: run.total,
+          attempts: (prev?.attempts ?? 0) + 1,
+          passedAt: prev?.passedAt ?? (run.passed ? now : null),
+        },
+      },
+    },
+  };
 }
 
 /** Records one hazard-spotting run (best result kept, first pass stamped once). */

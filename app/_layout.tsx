@@ -39,6 +39,7 @@ export default function RootLayout() {
           <Stack.Screen name="induction/[id]" />
           <Stack.Screen name="induction/glossary" />
           <Stack.Screen name="induction/hazard/[id]" />
+          <Stack.Screen name="induction/prestart/[id]" />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

@@ -95,7 +95,7 @@ describe('induction progress save', () => {
 
   test('default save has empty induction', () => {
     const save = createDefaultSave();
-    expect(save.induction).toEqual({ modules: {}, traineeName: '', certifiedAt: null, hazards: {} });
+    expect(save.induction).toEqual({ modules: {}, traineeName: '', certifiedAt: null, hazards: {}, prestart: {} });
   });
 
   test('failed attempt records score but not completion; later pass completes', () => {
@@ -150,7 +150,7 @@ describe('induction progress save', () => {
     expect(restored.xp).toBe(300);
     expect(restored.levels['1'].stars).toBe(2);
     expect(restored.settings.music).toBe(false);
-    expect(restored.induction).toEqual({ modules: {}, traineeName: '', certifiedAt: null, hazards: {} });
+    expect(restored.induction).toEqual({ modules: {}, traineeName: '', certifiedAt: null, hazards: {}, prestart: {} });
   });
 
   test('malformed induction data is sanitized instead of crashing', () => {

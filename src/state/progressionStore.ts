@@ -16,6 +16,7 @@ import {
   SAVE_VERSION,
   applyInductionQuiz,
   applyHazardRun,
+  applyPrestartRun,
   applyLevelResult,
   applyModeResult,
   applyUpgradePurchase,
@@ -24,6 +25,7 @@ import {
   type QuizAttempt,
   migrateSave,
   type HazardRunInput,
+  type PrestartRunInput,
   type LevelResultInput,
   type SaveData,
   type SettingsState,
@@ -50,6 +52,7 @@ interface ProgressionActions {
   recordInductionQuiz: (moduleId: string, attempt: QuizAttempt, allModuleIds: readonly string[]) => void;
   setTraineeName: (name: string) => void;
   recordHazardRun: (sceneId: string, run: HazardRunInput) => void;
+  recordPrestartRun: (scenarioId: string, run: PrestartRunInput) => void;
 }
 
 export type ProgressionStore = SaveData & ProgressionActions;
@@ -115,6 +118,10 @@ export const useProgression = create<ProgressionStore>()(
 
       recordHazardRun: (sceneId, run) => {
         set(applyHazardRun(getCurrentSave(), sceneId, run, Date.now()));
+      },
+
+      recordPrestartRun: (scenarioId, run) => {
+        set(applyPrestartRun(getCurrentSave(), scenarioId, run, Date.now()));
       },
 
       resetProgress: () => {
