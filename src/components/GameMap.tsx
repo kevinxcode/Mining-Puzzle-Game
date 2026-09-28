@@ -5,17 +5,28 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Maximize2, Minus, Plus } from 'lucide-react-native';
 import Svg, { Circle, Ellipse, G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { hapticSelection } from '@/services/haptics';
 import { distanceToSegment, nearestWithin } from './map/hitTest';
+import {
+  CAMERA_MIN_SCALE,
+  CAMERA_TAP_SCALE,
+  clampCamera,
+  toContent,
+  zoomAround,
+  type Camera,
+} from './map/camera';
 import { colors, radius, shadows } from '@/theme/tokens';
 import { getMaterial } from '@/game/config/materials';
 import { segmentKey } from '@/game/engine/routeEngine';
 import { MAP_SIZE, nodePosition, truckPosition, truckRoutePath } from '@/game/mapMath';
 import type { LevelConfig, Point, TruckRuntime } from '@/types/game';
 import { RouteLine } from './RouteLine';
+import { MapTerrain } from './map/MapTerrain';
 import { TruckUnit } from './TruckUnit';
 import { ExcavatorUnit } from './ExcavatorUnit';
 
@@ -47,23 +58,6 @@ const sameTarget = (a: DropTarget | null, b: DropTarget | null) =>
     : a?.kind === 'route'
       ? a.routeId === (b as { routeId: string }).routeId
       : true);
-
-/** Deterministic terrain decoration positions (same every render). */
-const DECORATIONS = {
-  trees: [
-    { x: 6, y: 12 }, { x: 93, y: 10 }, { x: 40, y: 30 }, { x: 62, y: 24 },
-    { x: 8, y: 70 }, { x: 94, y: 60 }, { x: 26, y: 96 }, { x: 70, y: 96 },
-  ],
-  rocks: [
-    { x: 34, y: 8 }, { x: 66, y: 44 }, { x: 10, y: 40 }, { x: 90, y: 40 },
-    { x: 44, y: 78 }, { x: 58, y: 54 },
-  ],
-  puddles: [
-    { x: 46, y: 46, rx: 6, ry: 3 }, { x: 18, y: 64, rx: 5, ry: 2.4 },
-    { x: 82, y: 66, rx: 5, ry: 2.4 },
-  ],
-  cones: [{ x: 26, y: 46 }, { x: 74, y: 46 }, { x: 46, y: 72 }],
-} as const;
 
 export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, onDropTruck, running = false }: GameMapProps) {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -128,12 +122,97 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
     return null;
   };
 
+  /* ---------------- Camera: pinch-zoom, pan, double-tap ---------------- */
+  const camScale = useSharedValue(1);
+  const camX = useSharedValue(0);
+  const camY = useSharedValue(0);
+  const start = useSharedValue<Camera>({ scale: 1, x: 0, y: 0 });
+  const pinchFocal = useSharedValue<Point>({ x: 0, y: 0 });
+  const view = { width: size.width, height: size.height };
+
+  const applyCamera = (cam: Camera, animated: boolean) => {
+    'worklet';
+    const c = clampCamera(cam, view);
+    if (animated) {
+      camScale.value = withTiming(c.scale, { duration: 220 });
+      camX.value = withTiming(c.x, { duration: 220 });
+      camY.value = withTiming(c.y, { duration: 220 });
+    } else {
+      camScale.value = c.scale;
+      camX.value = c.x;
+      camY.value = c.y;
+    }
+  };
+  const currentCamera = (): Camera => {
+    'worklet';
+    return { scale: camScale.value, x: camX.value, y: camY.value };
+  };
+
+  const pinchGesture = Gesture.Pinch()
+    .onStart((e) => {
+      start.value = currentCamera();
+      pinchFocal.value = { x: e.focalX, y: e.focalY };
+    })
+    .onUpdate((e) => {
+      const zoomed = zoomAround(start.value, pinchFocal.value, start.value.scale * e.scale);
+      // Moving the fingers while pinching also pans.
+      applyCamera(
+        { ...zoomed, x: zoomed.x + e.focalX - pinchFocal.value.x, y: zoomed.y + e.focalY - pinchFocal.value.y },
+        false,
+      );
+    });
+
+  const panGesture = Gesture.Pan()
+    .minDistance(6)
+    .averageTouches(true)
+    .onStart(() => {
+      start.value = currentCamera();
+    })
+    .onUpdate((e) => {
+      applyCamera({ ...start.value, x: start.value.x + e.translationX, y: start.value.y + e.translationY }, false);
+    });
+
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd((e) => {
+      const cam = currentCamera();
+      const target = cam.scale > CAMERA_MIN_SCALE + 0.05 ? CAMERA_MIN_SCALE : CAMERA_TAP_SCALE;
+      applyCamera(zoomAround(cam, { x: e.x, y: e.y }, target), true);
+    });
+
+  const zoomBy = (factor: number) => {
+    const cam = currentCamera();
+    applyCamera(zoomAround(cam, { x: size.width / 2, y: size.height / 2 }, cam.scale * factor), true);
+    hapticSelection();
+  };
+  const resetCamera = () => {
+    applyCamera({ scale: 1, x: 0, y: 0 }, true);
+    hapticSelection();
+  };
+
+  // Truck name pills only when zoomed in (or selected) so crowded junctions stay readable.
+  const [zoomedIn, setZoomedIn] = useState(false);
+  useAnimatedReaction(
+    () => camScale.value >= 1.5,
+    (now, before) => {
+      if (now !== before) runOnJS(setZoomedIn)(now);
+    },
+  );
+
+  const cameraStyle = useAnimatedStyle(() => ({
+    transformOrigin: [0, 0, 0],
+    transform: [{ translateX: camX.value }, { translateY: camY.value }, { scale: camScale.value }],
+  }));
+
+  /** Touch (map-view coordinates) → unzoomed map-layer coordinates. */
+  const touchToMap = (x: number, y: number): Point => toContent({ x, y }, currentCamera());
+
   const dragGesture = Gesture.Pan()
     .enabled(Boolean(onDropTruck))
     .activateAfterLongPress(220)
     .runOnJS(true)
     .onStart((e) => {
-      const point = { x: e.x, y: e.y };
+      const point = touchToMap(e.x, e.y);
       const truckTargets = trucks.map((t) => ({ id: t.id, ...toScreen(truckPosition(t, level)) }));
       const truckId = nearestWithin(point, truckTargets, 22 * scale);
       if (!truckId) return;
@@ -143,7 +222,7 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
     .onUpdate((e) => {
       const current = dragRef.current;
       if (!current) return;
-      const point = { x: e.x, y: e.y };
+      const point = touchToMap(e.x, e.y);
       const target = targetAt(point);
       if (target && !sameTarget(target, current.target)) hapticSelection();
       updateDrag({ ...current, point, target });
@@ -153,6 +232,9 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
       if (current?.target && onDropTruck) onDropTruck(current.truckId, current.target);
     })
     .onFinalize(() => updateDrag(null));
+
+  // Long-press drag on a truck beats a camera pan; pinch and double-tap run alongside.
+  const mapGesture = Gesture.Simultaneous(pinchGesture, doubleTapGesture, Gesture.Race(dragGesture, panGesture));
 
   const hoveredExcavator = drag?.target?.kind === 'excavator' ? drag.target.excavatorId : null;
   const hoveredRoute = drag?.target?.kind === 'route' ? level.map.routes.find((r) => r.id === (drag.target as { routeId: string }).routeId) : null;
@@ -169,91 +251,34 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
   return (
     <View style={[styles.container, shadows.soft]} onLayout={onLayout}>
       {size.width > 0 ? (
-        <GestureDetector gesture={dragGesture}>
+        <GestureDetector gesture={mapGesture}>
         <View collapsable={false} style={StyleSheet.absoluteFill}>
-        <Svg width={size.width} height={size.height}>
-          {/* Ground */}
-          <Rect
-            x={0}
-            y={0}
-            width={size.width}
-            height={size.height}
-            rx={radius.lg}
-            fill={colors.mapGround}
-          />
-          {/* Quarry wall along the top */}
-          <Rect
-            x={0}
-            y={0}
-            width={size.width}
-            height={8 * scale + 6}
-            rx={radius.lg}
-            fill={colors.mapWall}
-            opacity={0.7}
-          />
-
-          {/* Decorations */}
-          {DECORATIONS.puddles.map((p, i) => {
-            const s = toScreen({ x: p.x, y: p.y });
-            return (
-              <Ellipse
-                key={`puddle-${i}`}
-                cx={s.x}
-                cy={s.y}
-                rx={p.rx * scale}
-                ry={p.ry * scale}
-                fill={colors.mapWater}
-                opacity={0.8}
+        <Animated.View style={[StyleSheet.absoluteFill, cameraStyle]}>
+        <MapTerrain
+          width={size.width}
+          height={size.height}
+          scale={scale}
+          toScreen={toScreen}
+          nodes={level.map.nodes}
+          roads={roadGeometry}
+        />
+        <Svg width={size.width} height={size.height} style={StyleSheet.absoluteFill}>
+          {/* Busy road segments (dynamic; the static terrain draws the rest) */}
+          {roadGeometry.map(({ road, from, to }) =>
+            occupiedSegments.has(segmentKey(road.from, road.to)) && !road.closed ? (
+              <Line
+                key={`busy-${road.id}`}
+                x1={from.x}
+                y1={from.y}
+                x2={to.x}
+                y2={to.y}
+                stroke="#B39A6C"
+                strokeWidth={(road.narrow ? 3.6 : 5.4) * scale}
+                strokeLinecap="round"
+                opacity={0.55}
               />
-            );
-          })}
-          {DECORATIONS.rocks.map((p, i) => {
-            const s = toScreen({ x: p.x, y: p.y });
-            return (
-              <Circle key={`rock-${i}`} cx={s.x} cy={s.y} r={2.2 * scale} fill={colors.mapRock} />
-            );
-          })}
-          {DECORATIONS.trees.map((p, i) => {
-            const s = toScreen({ x: p.x, y: p.y });
-            return (
-              <Circle key={`tree-${i}`} cx={s.x} cy={s.y} r={2.8 * scale} fill={colors.mapTree} />
-            );
-          })}
-          {DECORATIONS.cones.map((p, i) => {
-            const s = toScreen({ x: p.x, y: p.y });
-            return (
-              <SvgText
-                key={`cone-${i}`}
-                x={s.x}
-                y={s.y + 2 * scale}
-                fontSize={6 * scale}
-                textAnchor="middle"
-              >
-                {'▲'}
-              </SvgText>
-            );
-          })}
-
-          {/* Roads */}
-          {roadGeometry.map(({ road, from, to }) => {
-            const active = occupiedSegments.has(segmentKey(road.from, road.to));
-            const width = (road.narrow ? 3.2 : road.mud ? 5.4 : 5) * scale;
-            const color = road.closed
-              ? colors.textMuted
-              : active
-                ? colors.mapRoadActive
-                : colors.mapRoad;
-            return (
-              <RouteLine
-                key={road.id}
-                points={[from, to]}
-                color={color}
-                width={width}
-                dashed={Boolean(road.closed) || Boolean(road.mud)}
-                opacity={road.closed ? 0.9 : 1}
-              />
-            );
-          })}
+            ) : null,
+          )}
 
           {/* Selected truck's route */}
           {selectedTruckId
@@ -269,141 +294,6 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
                   />
                 ))
             : null}
-
-          {/* One-way indicators */}
-          {roadGeometry.map(({ road, from, to }) =>
-            road.oneWay ? (
-              <SvgText
-                key={`oneway-${road.id}`}
-                x={(from.x + to.x) / 2}
-                y={(from.y + to.y) / 2 + 2 * scale}
-                fontSize={7 * scale}
-                fill={colors.text}
-                textAnchor="middle"
-              >
-                {'▸'}
-              </SvgText>
-            ) : null,
-          )}
-
-          {/* Nodes */}
-          {level.map.nodes.map((node) => {
-            const s = toScreen(node.position);
-            const material = getMaterial(node.materialId);
-            if (node.type === 'excavator') return null; // drawn in the native overlay
-            if (node.type === 'dump') {
-              return (
-                <G key={node.id}>
-                  <SvgText
-                    x={s.x}
-                    y={s.y - 8 * scale}
-                    fontSize={6.5 * scale}
-                    fill={colors.text}
-                    textAnchor="middle"
-                    fontWeight="700"
-                  >
-                    {node.name}
-                  </SvgText>
-                  <SvgText x={s.x} y={s.y + 3 * scale} fontSize={8 * scale} textAnchor="middle">
-                    {'⬢'}
-                  </SvgText>
-                  <Circle
-                    cx={s.x}
-                    cy={s.y + 2 * scale}
-                    r={2 * scale}
-                    fill={material?.color ?? colors.mapRock}
-                  />
-                </G>
-              );
-            }
-            if (node.type === 'fuel') {
-              return (
-                <G key={node.id}>
-                  <Circle
-                    cx={s.x}
-                    cy={s.y}
-                    r={4.5 * scale}
-                    fill={colors.info}
-                    stroke={colors.card}
-                    strokeWidth={1.2 * scale}
-                  />
-                  <SvgText
-                    x={s.x}
-                    y={s.y + 2.5 * scale}
-                    fontSize={6 * scale}
-                    fill={colors.textOnDark}
-                    textAnchor="middle"
-                    fontWeight="700"
-                  >
-                    {'F'}
-                  </SvgText>
-                  <SvgText
-                    x={s.x}
-                    y={s.y + 10 * scale}
-                    fontSize={6 * scale}
-                    fill={colors.text}
-                    textAnchor="middle"
-                  >
-                    {node.name}
-                  </SvgText>
-                </G>
-              );
-            }
-            if (node.type === 'parking') {
-              return (
-                <G key={node.id}>
-                  <Rect
-                    x={s.x - 6 * scale}
-                    y={s.y - 4 * scale}
-                    width={12 * scale}
-                    height={8 * scale}
-                    rx={2 * scale}
-                    fill="none"
-                    stroke={colors.textMuted}
-                    strokeWidth={1.2 * scale}
-                    strokeDasharray="3 3"
-                  />
-                  <SvgText
-                    x={s.x}
-                    y={s.y + 9 * scale}
-                    fontSize={5.5 * scale}
-                    fill={colors.textMuted}
-                    textAnchor="middle"
-                  >
-                    {node.name}
-                  </SvgText>
-                </G>
-              );
-            }
-            if (node.type === 'workshop') {
-              return (
-                <G key={node.id}>
-                  <Rect
-                    x={s.x - 4.5 * scale}
-                    y={s.y - 3.5 * scale}
-                    width={9 * scale}
-                    height={7 * scale}
-                    rx={1.5 * scale}
-                    fill={colors.mapWall}
-                    stroke={colors.mapRoadActive}
-                    strokeWidth={1 * scale}
-                  />
-                  <SvgText
-                    x={s.x}
-                    y={s.y + 8.5 * scale}
-                    fontSize={5.5 * scale}
-                    fill={colors.textMuted}
-                    textAnchor="middle"
-                  >
-                    {node.name}
-                  </SvgText>
-                </G>
-              );
-            }
-            return (
-              <Circle key={node.id} cx={s.x} cy={s.y} r={2.4 * scale} fill={colors.mapRoadActive} />
-            );
-          })}
 
           {/* Drag feedback: highlighted drop target + ghost truck under the finger */}
           {hoveredRoute
@@ -472,10 +362,24 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
             label={truck.spec.name}
             selected={truck.id === selectedTruckId}
             running={running}
+            showLabel={zoomedIn}
             parkSide={toScreen(truckPosition(truck, level)).x > size.width * 0.6 ? -1 : 1}
             onPress={() => onSelectTruck(truck.id)}
           />
         ))}
+        </Animated.View>
+        {/* Zoom controls */}
+        <View style={styles.zoomControls} pointerEvents="box-none">
+          <Pressable style={styles.zoomButton} onPress={() => zoomBy(1.5)} accessibilityRole="button" accessibilityLabel="Zoom in" hitSlop={6}>
+            <Plus size={18} color={colors.textOnDark} />
+          </Pressable>
+          <Pressable style={styles.zoomButton} onPress={() => zoomBy(1 / 1.5)} accessibilityRole="button" accessibilityLabel="Zoom out" hitSlop={6}>
+            <Minus size={18} color={colors.textOnDark} />
+          </Pressable>
+          <Pressable style={styles.zoomButton} onPress={resetCamera} accessibilityRole="button" accessibilityLabel="Reset map view" hitSlop={6}>
+            <Maximize2 size={16} color={colors.textOnDark} />
+          </Pressable>
+        </View>
         </View>
         </GestureDetector>
       ) : null}
@@ -489,5 +393,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: colors.mapGround,
+  },
+  zoomControls: {
+    position: 'absolute',
+    left: 10,
+    bottom: 10,
+    gap: 8,
+  },
+  zoomButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(28,31,36,0.78)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

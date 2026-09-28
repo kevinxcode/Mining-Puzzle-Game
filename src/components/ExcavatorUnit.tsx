@@ -5,7 +5,7 @@
  */
 
 import { useEffect } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -16,7 +16,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import { colors } from '@/theme/tokens';
 import type { Point } from '@/types/game';
 
@@ -79,6 +79,7 @@ export function ExcavatorUnit({ position, scale, materialColor, label, loading, 
       style={[styles.wrap, { width: box, height: box, left: position.x - center, top: position.y - center }]}
     >
       <Svg width={box} height={box} style={StyleSheet.absoluteFill}>
+        <Ellipse cx={center + 1 * scale} cy={center + size / 2 + 0.8 * scale} rx={size * 0.55} ry={1.8 * scale} fill="rgba(60,45,30,0.3)" />
         {loading ? (
           <Circle cx={center} cy={center} r={size * 0.95} fill="none" stroke={colors.secondary} strokeWidth={1.5 * scale} />
         ) : null}
@@ -125,14 +126,17 @@ export function ExcavatorUnit({ position, scale, materialColor, label, loading, 
           <Circle cx={center + 11.5 * k} cy={center + 3.5 * k} r={0.7 * scale} fill={materialColor} />
         </Svg>
       </Animated.View>
-      <Text style={[styles.label, { left: center - 100, top: center + size / 2 + 1.5 * scale, fontSize: 6.5 * scale }]} numberOfLines={1}>
-        {label}
-      </Text>
+      <View style={[styles.labelWrap, { top: center + size / 2 + 2.5 * scale }]}>
+        <Text style={[styles.label, { fontSize: 4 * scale, borderRadius: 3 * scale, paddingHorizontal: 2.5 * scale }]} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', alignItems: 'center' },
-  label: { position: 'absolute', color: colors.text, fontWeight: '700', width: 200, textAlign: 'center' },
+  labelWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  label: { color: colors.textOnDark, fontWeight: '700', backgroundColor: 'rgba(28,31,36,0.72)', overflow: 'hidden' },
 });

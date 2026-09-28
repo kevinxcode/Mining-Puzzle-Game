@@ -17,7 +17,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import { balance } from '@/game/config/balance';
 import { colors } from '@/theme/tokens';
 import type { Point, TruckRuntimeState } from '@/types/game';
@@ -34,6 +34,8 @@ interface TruckUnitProps {
   running: boolean;
   /** Which side of a node the truck parks on (-1 = left, near the right map edge). */
   parkSide?: 1 | -1;
+  /** Show the name pill (zoomed in or selected) — keeps crowded maps readable. */
+  showLabel?: boolean;
   onPress: () => void;
 }
 
@@ -68,6 +70,7 @@ export function TruckUnit({
   selected,
   running,
   parkSide = 1,
+  showLabel = true,
   onPress,
 }: TruckUnitProps) {
   const reduceMotion = useReducedMotion();
@@ -145,6 +148,7 @@ export function TruckUnit({
             {selected ? (
               <Circle cx={center} cy={center} r={r * 1.6} fill="none" stroke={colors.primary} strokeWidth={1.5 * scale} />
             ) : null}
+            <Ellipse cx={center + 0.8 * scale} cy={center + r * 0.95} rx={r * 0.95} ry={r * 0.32} fill="rgba(60,45,30,0.3)" />
             <Circle cx={center} cy={center} r={r} fill={color} stroke={colors.card} strokeWidth={1.2 * scale} />
             <G transform={`translate(${center} ${center}) scale(${k})`}>
               {/* Dump bed with material heaped inside by load fraction */}
@@ -164,14 +168,16 @@ export function TruckUnit({
         </Animated.View>
       </Pressable>
       {/* Label pill above the badge */}
+      {showLabel || selected ? (
       <View
         pointerEvents="none"
         style={[styles.label, { bottom: center + r + 1.5 * scale, borderRadius: 4 * scale, paddingHorizontal: 2.5 * scale }]}
       >
-        <Text style={[styles.labelText, { fontSize: 5.5 * scale }]} numberOfLines={1}>
+        <Text style={[styles.labelText, { fontSize: 4.2 * scale }]} numberOfLines={1}>
           {label}
         </Text>
       </View>
+      ) : null}
     </Animated.View>
   );
 }
