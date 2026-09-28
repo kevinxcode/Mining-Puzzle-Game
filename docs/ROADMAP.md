@@ -33,13 +33,12 @@ Effort: **S** = days, **M** = 1–2 weeks, **L** = 3+ weeks (small team).
 
 | # | Feature | Effort | Why |
 |---|---|---|---|
-| 6 | Leaderboards (global + crew/site code) with cloud save | M | Social play and competition between crews; **needs a backend decision** (Firebase / Supabase / company server) |
+| 6 | ~~Online leaderboards / cloud save~~ | M | **Dropped (2026-09-28)** — the app stays fully offline by decision; friend challenges (6a) cover competition |
 | 6a | ~~Offline friend challenges~~ | S | **Done** — share a finished level as a code (nickname + ghost); the receiver replays it to verify the score, watches it and plays to beat it. No backend |
-| 6b | Online leaderboard + cloud save (Firebase Spark, free tier) | M | Next step once a Firebase project exists: anonymous auth + Firestore, nickname only; HSE training data stays on-device / company server (UU PDP) |
 | 7 | ~~Site HQ~~ | M–L | **Done** — Workshop (+1 hint/level), Crew Canteen (+5% XP/level), Weighbridge (+5% coins/level), 3 levels each; never touches the sim |
 | 8 | ~~Ghost replay of your best run~~ | M | **Done** — command log of the best-scoring run, "Watch best run" on the level screen |
 | 9 | ~~Cosmetic truck liveries~~ | M | **Done** — 6 paint schemes in Equipment (coins or 30 three-star levels); site themes later |
-| 10 | Optional rewarded ad (free retry / double coins) — consumer build only | M | Industry-standard retention lever; never in company builds |
+| 10 | ~~Optional rewarded ad~~ | M | **Dropped** — ads need a network; the app stays offline |
 | 11 | 2.5D / isometric map view | L | Closer to the Clash of Clans look the user asked about |
 | 12 | Level editor / user levels, season pass | L | Deferred until there is a player base |
 
@@ -58,6 +57,6 @@ Effort: **S** = days, **M** = 1–2 weeks, **L** = 3+ weeks (small team).
 
 ## Decisions needed
 
-- **Backend** for leaderboards / cloud save / HSE reports: Firebase, Supabase or company server?
-- **Monetisation** for the consumer build: rewarded ads, cosmetics, or premium only?
+- ~~Backend~~ — **decided 2026-09-28: no online features.** The app stays fully offline; HSE data moves only through user-initiated CSV/PDF exports.
+- **Monetisation** for the consumer build: cosmetics (coin liveries exist) or premium only? Ads are out (offline).
 - **Isometric map** (#11): worth the effort now or after launch?
