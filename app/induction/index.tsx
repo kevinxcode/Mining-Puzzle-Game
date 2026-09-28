@@ -14,9 +14,11 @@ import {
   CheckCircle2,
   ChevronRight,
   Share2,
+  ShieldAlert,
 } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { INDUCTION_MODULES, INDUCTION_MODULE_IDS } from '@/game/induction/modules';
+import { HAZARD_SCENES } from '@/game/induction/hazards';
 import { MAX_TRAINEE_NAME, inductionProgress } from '@/state/save';
 import { useProgression } from '@/state/progressionStore';
 import { MODULE_ICONS } from '@/components/InductionArt';
@@ -121,6 +123,35 @@ export default function InductionScreen() {
             );
           })}
 
+          <Text style={styles.hazardHeading}>HAZARD SPOTTING</Text>
+          {HAZARD_SCENES.map((scene, i) => {
+            const rec = induction.hazards[scene.id];
+            const passedScene = Boolean(rec?.passedAt);
+            return (
+              <FadeInView key={scene.id} index={INDUCTION_MODULES.length + 1 + i}>
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel={`Hazard spotting: ${scene.title}${passedScene ? ', cleared' : ''}`}
+                  onPress={() => router.push(`/induction/hazard/${scene.id}`)}
+                  style={[styles.glossaryCard, shadows.soft]}
+                >
+                  {passedScene ? (
+                    <CheckCircle2 size={iconSizes.md} color={colors.success} />
+                  ) : (
+                    <ShieldAlert size={iconSizes.md} color={colors.warning} />
+                  )}
+                  <View style={styles.moduleInfo}>
+                    <Text style={styles.moduleTitle}>{scene.title}</Text>
+                    <Text style={styles.moduleSummary}>
+                      {rec ? `${passedScene ? 'Cleared' : 'Try again'} · best ${rec.bestFound}/${rec.total}` : `Find ${scene.hazards.length} hazards`}
+                    </Text>
+                  </View>
+                  <ChevronRight size={iconSizes.md} color={colors.textMuted} />
+                </PressableScale>
+              </FadeInView>
+            );
+          })}
+
           <FadeInView index={INDUCTION_MODULES.length + 1}>
             <PressableScale
               accessibilityRole="button"
@@ -188,6 +219,7 @@ export default function InductionScreen() {
 }
 
 const styles = StyleSheet.create({
+  hazardHeading: { ...typography.caption, color: colors.textOnDark, fontWeight: '800', letterSpacing: 1, marginTop: spacing.sm },
   bg: { flex: 1, backgroundColor: colors.surface },
   safe: { flex: 1 },
   content: {

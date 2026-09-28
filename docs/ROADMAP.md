@@ -45,7 +45,7 @@ Effort: **S** = days, **M** = 1–2 weeks, **L** = 3+ weeks (small team).
 
 | # | Feature | Effort | Why |
 |---|---|---|---|
-| 13 | Hazard-spotting mini-game (tap the hazards in a site scene) | M | Highest B2B value; proven pattern in mining serious games |
+| 13 | ~~Hazard-spotting mini-game~~ | M | **Done** — 3 scenes (loading area, haul road, refuelling bay), 12 hazards, results saved |
 | 14 | Pre-start inspection (P2H) checklist mini-game | M | Direct link to daily site practice |
 | 15 | Supervisor / HSE report export (completion, quiz scores, certificates as CSV/PDF) | M | What HSE needs to justify adoption |
 | 16 | Trainee identity (employee ID, site, contractor) + certificate expiry / retake | M | Required for real induction records |

@@ -8,6 +8,7 @@ import { balance } from '../game/config/balance';
 import { UPGRADES, upgradeCost } from '../game/config/equipment';
 import { modeRewards } from '../game/config/rewards';
 import { parseModeLevelId } from '../game/levels/modeLevels';
+import { HAZARD_MAX_MISSES } from '../game/induction/hazards';
 
 /**
  * v1: campaign progression.
@@ -60,6 +61,22 @@ export interface InductionState {
   traineeName: string;
   /** Timestamp when all modules were first completed. */
   certifiedAt: number | null;
+  /** Hazard-spotting results per scene id. */
+  hazards: Record<string, HazardRecord>;
+}
+
+export interface HazardRecord {
+  bestFound: number;
+  total: number;
+  attempts: number;
+  /** First passing run, or null. */
+  passedAt: number | null;
+}
+
+export interface HazardRunInput {
+  found: number;
+  total: number;
+  misses: number;
 }
 
 export interface SaveData {
@@ -154,7 +171,7 @@ export function createDefaultSave(): SaveData {
 }
 
 export function createDefaultInduction(): InductionState {
-  return { modules: {}, traineeName: '', certifiedAt: null };
+  return { modules: {}, traineeName: '', certifiedAt: null, hazards: {} };
 }
 
 export function serializeSave(data: SaveData): string {
@@ -242,6 +259,43 @@ function migrateInduction(raw: unknown): InductionState {
     modules,
     traineeName: typeof data.traineeName === 'string' ? data.traineeName.slice(0, MAX_TRAINEE_NAME) : '',
     certifiedAt: typeof data.certifiedAt === 'number' ? data.certifiedAt : null,
+    hazards: migrateHazards(data.hazards),
+  };
+}
+
+function migrateHazards(raw: unknown): Record<string, HazardRecord> {
+  const out: Record<string, HazardRecord> = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [id, rec] of Object.entries(raw as Record<string, Partial<HazardRecord>>)) {
+    if (!rec || typeof rec !== 'object') continue;
+    out[id] = {
+      bestFound: typeof rec.bestFound === 'number' ? rec.bestFound : 0,
+      total: typeof rec.total === 'number' ? rec.total : 0,
+      attempts: typeof rec.attempts === 'number' ? rec.attempts : 0,
+      passedAt: typeof rec.passedAt === 'number' ? rec.passedAt : null,
+    };
+  }
+  return out;
+}
+
+/** Records one hazard-spotting run (best result kept, first pass stamped once). */
+export function applyHazardRun(save: SaveData, sceneId: string, run: HazardRunInput, now: number): SaveData {
+  const prev = save.induction.hazards[sceneId];
+  const passed = run.found >= run.total && run.misses <= HAZARD_MAX_MISSES;
+  return {
+    ...save,
+    induction: {
+      ...save.induction,
+      hazards: {
+        ...save.induction.hazards,
+        [sceneId]: {
+          bestFound: Math.max(prev?.bestFound ?? 0, run.found),
+          total: run.total,
+          attempts: (prev?.attempts ?? 0) + 1,
+          passedAt: prev?.passedAt ?? (passed ? now : null),
+        },
+      },
+    },
   };
 }
 
