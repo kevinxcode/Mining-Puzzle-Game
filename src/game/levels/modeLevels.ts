@@ -7,7 +7,7 @@
  */
 
 import type { LevelConfig, TruckClass } from '@/types/game';
-import { buildLevel } from './levelFactory';
+import { buildLevel, getLevelById } from './levelFactory';
 import { LEVEL_SEEDS, type LevelSeed, type SeedEventType } from './levelTable';
 
 const CLASS_BY_LETTER: Record<string, TruckClass> = { C: 'Compact', S: 'Standard', H: 'Heavy', U: 'Ultra' };
@@ -133,4 +133,9 @@ export function nextRouteAfter(levelId: string, totalLevels: number): string {
   if (!ref) return `/level/${Math.min(totalLevels, Number(levelId) + 1)}`;
   if (ref.mode === 'daily') return '/modes';
   return `/level/${withFleetClass(endlessLevelId(ref.shift + 1), ref.fleetClass)}`;
+}
+
+/** Any playable level: a campaign level id or a daily/endless mode id. */
+export function resolveLevel(id: string): LevelConfig | undefined {
+  return getLevelById(id) ?? resolveModeLevel(id);
 }

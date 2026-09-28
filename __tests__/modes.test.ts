@@ -1,5 +1,4 @@
 import { createSimState, startOperation, tick } from '@/game/engine/simulationEngine';
-import { getLevelById } from '@/game/levels/levelFactory';
 import {
   buildDailyLevel,
   buildEndlessLevel,
@@ -7,6 +6,7 @@ import {
   endlessLevelId,
   nextRouteAfter,
   parseModeLevelId,
+  resolveLevel,
 } from '@/game/levels/modeLevels';
 import type { LevelConfig } from '@/types/game';
 
@@ -43,7 +43,7 @@ describe('daily challenge levels', () => {
   test('daily ids resolve through getLevelById', () => {
     const id = dailyLevelId('2026-09-28');
     expect(id).toBe('daily-2026-09-28');
-    expect(getLevelById(id)?.id).toBe(id);
+    expect(resolveLevel(id)?.id).toBe(id);
   });
 
   test('three months of dailies is completable with the default strategy', () => {
@@ -68,13 +68,13 @@ describe('endless shift levels', () => {
   });
 
   test('endless ids resolve through getLevelById', () => {
-    expect(getLevelById(endlessLevelId(3))?.targetTons).toBe(buildEndlessLevel(3).targetTons);
+    expect(resolveLevel(endlessLevelId(3))?.targetTons).toBe(buildEndlessLevel(3).targetTons);
   });
 });
 
 describe('mode fleet choice', () => {
   test('an @ suffix swaps every truck to the chosen class', () => {
-    const level = getLevelById(`${dailyLevelId('2026-09-28')}@H`)!;
+    const level = resolveLevel(`${dailyLevelId('2026-09-28')}@H`)!;
     expect(level.trucks.every((t) => t.truckClass === 'Heavy')).toBe(true);
   });
 
@@ -84,7 +84,7 @@ describe('mode fleet choice', () => {
     expect(parseModeLevelId('12')).toBeNull();
     expect(parseModeLevelId('daily-nope')).toBeNull();
     expect(parseModeLevelId('endless-0')).toBeNull();
-    expect(getLevelById('daily-2026-09-28@Z')).toBeUndefined();
+    expect(resolveLevel('daily-2026-09-28@Z')).toBeUndefined();
   });
 });
 

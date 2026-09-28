@@ -21,7 +21,7 @@ import {
 } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { colors, iconSizes, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
-import { getLevelById, TOTAL_LEVELS } from '@/game/levels/levelFactory';
+import { TOTAL_LEVELS } from '@/game/levels/levelFactory';
 import { SimController } from '@/game/simController';
 import {
   evaluateObjectives,
@@ -46,7 +46,7 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ProductionMeter } from '@/components/ProductionMeter';
 import { RouteSheet } from '@/components/RouteSheet';
 import { TutorialCoachmark } from '@/components/TutorialCoachmark';
-import { nextRouteAfter } from '@/game/levels/modeLevels';
+import { nextRouteAfter, resolveLevel } from '@/game/levels/modeLevels';
 import { playSfx } from '@/services/audio';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
 
@@ -90,7 +90,7 @@ export default function GameRoute() {
 
 function GameScreen({ levelId }: { levelId: string }) {
   const router = useRouter();
-  const level = getLevelById(levelId);
+  const level = resolveLevel(levelId);
 
   const upgrades = useProgression((s) => s.upgrades);
   const recordLevelResult = useProgression((s) => s.recordLevelResult);
@@ -260,6 +260,18 @@ function GameScreen({ levelId }: { levelId: string }) {
             onSelectTruck={(truckId) => {
               setSelectedTruckId(truckId);
               setSheetOpen(true);
+            }}
+            onDropTruck={(truckId, target) => {
+              const ok =
+                target.kind === 'excavator'
+                  ? controller.assignTruck(truckId, target.excavatorId)
+                  : controller.setTruckRoute(truckId, target.routeId);
+              if (ok) {
+                playSfx('tap');
+                hapticSuccess();
+              } else {
+                hapticWarning();
+              }
             }}
           />
         </View>

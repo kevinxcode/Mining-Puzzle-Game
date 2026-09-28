@@ -4,9 +4,12 @@
  * The map is the visual focus of the game screen.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Svg, { Circle, Ellipse, G, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Ellipse, G, Line, Rect, Text as SvgText } from 'react-native-svg';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { hapticSelection } from '@/services/haptics';
+import { distanceToSegment, nearestWithin } from './map/hitTest';
 import { colors, radius, shadows } from '@/theme/tokens';
 import { getMaterial } from '@/game/config/materials';
 import { segmentKey } from '@/game/engine/routeEngine';
@@ -23,7 +26,25 @@ interface GameMapProps {
   roads?: LevelConfig['map']['roads'];
   selectedTruckId: string | null;
   onSelectTruck: (truckId: string) => void;
+  /** Long-press + drag a truck onto an excavator or a route line. */
+  onDropTruck?: (truckId: string, target: DropTarget) => void;
 }
+
+export type DropTarget = { kind: 'excavator'; excavatorId: string } | { kind: 'route'; routeId: string };
+
+interface DragState {
+  truckId: string;
+  point: Point;
+  target: DropTarget | null;
+}
+
+const sameTarget = (a: DropTarget | null, b: DropTarget | null) =>
+  a?.kind === b?.kind &&
+  (a?.kind === 'excavator'
+    ? a.excavatorId === (b as { excavatorId: string }).excavatorId
+    : a?.kind === 'route'
+      ? a.routeId === (b as { routeId: string }).routeId
+      : true);
 
 /** Deterministic terrain decoration positions (same every render). */
 const DECORATIONS = {
@@ -42,7 +63,7 @@ const DECORATIONS = {
   cones: [{ x: 26, y: 46 }, { x: 74, y: 46 }, { x: 46, y: 72 }],
 } as const;
 
-export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck }: GameMapProps) {
+export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, onDropTruck }: GameMapProps) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const pad = 26;
   const usable = Math.max(0.01, Math.min(size.width, size.height) - pad * 2);
@@ -84,6 +105,58 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck }
     return ids;
   }, [trucks]);
 
+  /* ---------------- Drag-to-assign ---------------- */
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const updateDrag = (next: DragState | null) => {
+    dragRef.current = next;
+    setDrag(next);
+  };
+
+  const excavatorTargets = level.excavators.map((ex) => ({ id: ex.id, ...toScreen(nodePosition(level, ex.nodeId)) }));
+
+  const targetAt = (point: Point): DropTarget | null => {
+    const exId = nearestWithin(point, excavatorTargets, 16 * scale);
+    if (exId) return { kind: 'excavator', excavatorId: exId };
+    for (const route of level.map.routes) {
+      for (let i = 0; i < route.nodePath.length - 1; i += 1) {
+        const a = toScreen(nodePosition(level, route.nodePath[i]));
+        const b = toScreen(nodePosition(level, route.nodePath[i + 1]));
+        if (distanceToSegment(point, a, b) <= 6 * scale) return { kind: 'route', routeId: route.id };
+      }
+    }
+    return null;
+  };
+
+  const dragGesture = Gesture.Pan()
+    .enabled(Boolean(onDropTruck))
+    .activateAfterLongPress(220)
+    .runOnJS(true)
+    .onStart((e) => {
+      const point = { x: e.x, y: e.y };
+      const truckTargets = trucks.map((t) => ({ id: t.id, ...toScreen(truckPosition(t, level)) }));
+      const truckId = nearestWithin(point, truckTargets, 22 * scale);
+      if (!truckId) return;
+      hapticSelection();
+      updateDrag({ truckId, point, target: null });
+    })
+    .onUpdate((e) => {
+      const current = dragRef.current;
+      if (!current) return;
+      const point = { x: e.x, y: e.y };
+      const target = targetAt(point);
+      if (target && !sameTarget(target, current.target)) hapticSelection();
+      updateDrag({ ...current, point, target });
+    })
+    .onEnd(() => {
+      const current = dragRef.current;
+      if (current?.target && onDropTruck) onDropTruck(current.truckId, current.target);
+    })
+    .onFinalize(() => updateDrag(null));
+
+  const hoveredExcavator = drag?.target?.kind === 'excavator' ? drag.target.excavatorId : null;
+  const hoveredRoute = drag?.target?.kind === 'route' ? level.map.routes.find((r) => r.id === (drag.target as { routeId: string }).routeId) : null;
+
   const onLayout = (event: {
     nativeEvent: { layout: { width: number; height: number } };
   }) => {
@@ -96,6 +169,8 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck }
   return (
     <View style={[styles.container, shadows.soft]} onLayout={onLayout}>
       {size.width > 0 ? (
+        <GestureDetector gesture={dragGesture}>
+        <View collapsable={false} style={StyleSheet.absoluteFill}>
         <Svg width={size.width} height={size.height}>
           {/* Ground */}
           <Rect
@@ -354,7 +429,52 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck }
               onPress={() => onSelectTruck(truck.id)}
             />
           ))}
+
+          {/* Drag feedback: highlighted drop target + ghost truck under the finger */}
+          {hoveredRoute
+            ? hoveredRoute.nodePath.slice(0, -1).map((from, i) => {
+                const a = toScreen(nodePosition(level, from));
+                const b = toScreen(nodePosition(level, hoveredRoute.nodePath[i + 1]));
+                return (
+                  <Line
+                    key={`drop-${i}`}
+                    x1={a.x}
+                    y1={a.y}
+                    x2={b.x}
+                    y2={b.y}
+                    stroke={colors.info}
+                    strokeWidth={5 * scale}
+                    strokeLinecap="round"
+                    opacity={0.6}
+                  />
+                );
+              })
+            : null}
+          {hoveredExcavator
+            ? (() => {
+                const t = excavatorTargets.find((e) => e.id === hoveredExcavator)!;
+                return (
+                  <Circle cx={t.x} cy={t.y} r={14 * scale} fill="none" stroke={colors.info} strokeWidth={2.5 * scale} />
+                );
+              })()
+            : null}
+          {drag ? (
+            <G opacity={0.85}>
+              <Circle cx={drag.point.x} cy={drag.point.y} r={8 * scale} fill={colors.primary} stroke={colors.card} strokeWidth={1.5 * scale} />
+              <Line
+                x1={toScreen(truckPosition(trucks.find((t) => t.id === drag.truckId)!, level)).x}
+                y1={toScreen(truckPosition(trucks.find((t) => t.id === drag.truckId)!, level)).y}
+                x2={drag.point.x}
+                y2={drag.point.y}
+                stroke={colors.primary}
+                strokeWidth={1.2 * scale}
+                strokeDasharray={`${3 * scale} ${3 * scale}`}
+              />
+            </G>
+          ) : null}
         </Svg>
+        </View>
+        </GestureDetector>
       ) : null}
     </View>
   );

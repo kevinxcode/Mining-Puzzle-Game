@@ -28,7 +28,6 @@ import {
   type MapTemplateId,
 } from './maps';
 import { LEVEL_SEEDS, type LevelSeed } from './levelTable';
-import { resolveModeLevel } from './modeLevels';
 
 export interface RegionDef {
   id: number;
@@ -510,7 +509,7 @@ export function regionOfLevel(levelNumber: number): RegionDef {
 export const LEVELS: LevelConfig[] = LEVEL_SEEDS.map((seed, i) => buildLevel(i + 1, seed));
 
 export function getLevelById(id: string): LevelConfig | undefined {
-  return LEVELS.find((l) => l.id === id) ?? resolveModeLevel(id);
+  return LEVELS.find((l) => l.id === id);
 }
 
 export function getLevelByNumber(levelNumber: number): LevelConfig {

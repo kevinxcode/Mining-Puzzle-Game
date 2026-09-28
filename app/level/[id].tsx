@@ -20,8 +20,8 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
-import { getLevelById, regionOfLevel } from '@/game/levels/levelFactory';
-import { parseModeLevelId, withFleetClass } from '@/game/levels/modeLevels';
+import { regionOfLevel } from '@/game/levels/levelFactory';
+import { parseModeLevelId, resolveLevel, withFleetClass } from '@/game/levels/modeLevels';
 import { TRUCK_CLASSES, unlockedTruckClasses } from '@/game/config/equipment';
 import type { TruckClass } from '@/types/game';
 import { useProgression } from '@/state/progressionStore';
@@ -37,7 +37,7 @@ import { hapticMedium } from '@/services/haptics';
 export default function BriefingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
-  const level = getLevelById(String(params.id));
+  const level = resolveLevel(String(params.id));
   const levelRecords = useProgression((s) => s.levels);
   const setLastPlayed = useProgression((s) => s.setLastPlayed);
   const levelsCompleted = useProgression((s) => s.statistics.levelsCompleted);
