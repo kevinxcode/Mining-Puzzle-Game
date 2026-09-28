@@ -36,7 +36,7 @@ Effort: **S** = days, **M** = 1–2 weeks, **L** = 3+ weeks (small team).
 | 6 | Leaderboards (global + crew/site code) with cloud save | M | Social play and competition between crews; **needs a backend decision** (Firebase / Supabase / company server) |
 | 7 | Site HQ: build facilities between levels (workshop, canteen, wash bay) for small passive bonuses | M–L | Long-term meta and a use for coins beyond upgrades |
 | 8 | Ghost replay of your best run | M | Cheap because the sim is deterministic; good for learning |
-| 9 | Cosmetic truck liveries / site themes | M | Monetisation without pay-to-win |
+| 9 | ~~Cosmetic truck liveries~~ | M | **Done** — 6 paint schemes in Equipment (coins or 30 three-star levels); site themes later |
 | 10 | Optional rewarded ad (free retry / double coins) — consumer build only | M | Industry-standard retention lever; never in company builds |
 | 11 | 2.5D / isometric map view | L | Closer to the Clash of Clans look the user asked about |
 | 12 | Level editor / user levels, season pass | L | Deferred until there is a player base |

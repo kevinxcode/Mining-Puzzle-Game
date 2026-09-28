@@ -28,6 +28,7 @@ import type { LevelConfig, Point, TruckRuntime } from '@/types/game';
 import { RouteLine } from './RouteLine';
 import { MapTerrain } from './map/MapTerrain';
 import { TruckUnit } from './TruckUnit';
+import { useProgression } from '@/state/progressionStore';
 import { ExcavatorUnit } from './ExcavatorUnit';
 
 interface GameMapProps {
@@ -60,6 +61,7 @@ const sameTarget = (a: DropTarget | null, b: DropTarget | null) =>
       : true);
 
 export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, onDropTruck, running = false }: GameMapProps) {
+  const liveryId = useProgression((s) => s.cosmetics.livery);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const pad = 26;
   const usable = Math.max(0.01, Math.min(size.width, size.height) - pad * 2);
@@ -363,6 +365,7 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
             selected={truck.id === selectedTruckId}
             running={running}
             showLabel={zoomedIn}
+            liveryId={liveryId}
             parkSide={toScreen(truckPosition(truck, level)).x > size.width * 0.6 ? -1 : 1}
             onPress={() => onSelectTruck(truck.id)}
           />

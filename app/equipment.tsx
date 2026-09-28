@@ -5,7 +5,10 @@
 
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Coins, Lock, Pickaxe, Sparkles, Truck } from 'lucide-react-native';
+import { Check, Coins, Lock, Pickaxe, Sparkles, Star, Truck } from 'lucide-react-native';
+import Svg, { Path, Rect } from 'react-native-svg';
+import { LIVERIES, isLiveryOwned, type Livery } from '@/game/config/liveries';
+import { PressableScale } from '@/components/PressableScale';
 import { colors, iconSizes, layout, radius, shadows, spacing, typography } from '@/theme/tokens';
 import {
   EQUIPMENT_CATALOG,
@@ -30,6 +33,10 @@ export default function EquipmentScreen() {
   const coins = useProgression((s) => s.coins);
   const upgrades = useProgression((s) => s.upgrades);
   const buyUpgrade = useProgression((s) => s.buyUpgrade);
+  const cosmetics = useProgression((s) => s.cosmetics);
+  const threeStars = useProgression((s) => s.statistics.threeStarLevels);
+  const buyLivery = useProgression((s) => s.buyLivery);
+  const selectLivery = useProgression((s) => s.selectLivery);
   const playerLevel = playerLevelFromXp(xp);
   const levelsCompleted = useProgression((s) => s.statistics.levelsCompleted);
 
@@ -121,6 +128,49 @@ export default function EquipmentScreen() {
           );
         })}
 
+        <Text style={styles.sectionTitle}>Liveries</Text>
+        <Text style={styles.upgradeDesc}>Cosmetic paint for your haul fleet. No effect on performance.</Text>
+        <View style={styles.liveryGrid}>
+          {LIVERIES.map((livery) => {
+            const owned = isLiveryOwned(cosmetics, livery, threeStars);
+            const equipped = cosmetics.livery === livery.id;
+            const starLocked = livery.unlockThreeStars !== undefined && !owned;
+            const affordable = coins >= livery.cost;
+            const onPress = () => (owned ? selectLivery(livery.id) : buyLivery(livery.id));
+            const status = equipped
+              ? 'Equipped'
+              : owned
+                ? 'Tap to equip'
+                : starLocked
+                  ? `${threeStars}/${livery.unlockThreeStars} three-star levels`
+                  : `${livery.cost} coins`;
+            return (
+              <PressableScale
+                key={livery.id}
+                onPress={onPress}
+                disabled={equipped || starLocked || (!owned && !affordable)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: equipped }}
+                accessibilityLabel={`${livery.name} livery, ${status}`}
+                style={[styles.liveryCard, equipped && styles.liveryEquipped, !owned && !affordable && styles.entryLocked]}
+              >
+                <LiveryPreview livery={livery} />
+                <Text style={styles.upgradeName} numberOfLines={1}>{livery.name}</Text>
+                <View style={styles.liveryStatus}>
+                  {equipped ? (
+                    <Check size={iconSizes.xs} color={colors.success} />
+                  ) : owned ? null : starLocked ? (
+                    <Star size={iconSizes.xs} color={colors.warning} />
+                  ) : (
+                    <Coins size={iconSizes.xs} color={colors.primary} />
+                  )}
+                  <Text style={styles.upgradeDesc} numberOfLines={1}>{status}</Text>
+                </View>
+              </PressableScale>
+            );
+          })}
+        </View>
+
         <Text style={styles.sectionTitle}>Trucks</Text>
         {EQUIPMENT_CATALOG.filter((e) => e.kind === 'truck').map(renderEntry)}
 
@@ -131,7 +181,35 @@ export default function EquipmentScreen() {
   );
 }
 
+function LiveryPreview({ livery }: { livery: Livery }) {
+  return (
+    <Svg width={72} height={44} viewBox="-11 -6 22 13">
+      <Path d="M-9.5 -4 L3 -4 L3 3 L-8 3 Z" fill={livery.bed} />
+      <Path d="M3.8 -3 L7 -3 L9.5 0.5 L9.5 3 L3.8 3 Z" fill={livery.cab} stroke={colors.surfaceMuted} strokeWidth={0.3} />
+      <Path d="M5 -2 L6.6 -2 L8.2 0.4 L5 0.4 Z" fill={livery.glass} />
+      <Rect x={-9} y={3} width={18.5} height={1.6} fill={colors.surface} />
+      <Rect x={-7.9} y={3.2} width={4.8} height={4.8} rx={2.4} fill={colors.surface} />
+      <Rect x={3.6} y={3.2} width={4.8} height={4.8} rx={2.4} fill={colors.surface} />
+    </Svg>
+  );
+}
+
 const styles = StyleSheet.create({
+  liveryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  liveryCard: {
+    width: '31%',
+    flexGrow: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+    alignItems: 'center',
+    gap: 2,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    ...shadows.soft,
+  },
+  liveryEquipped: { borderColor: colors.success },
+  liveryStatus: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   upgradeEffect: { ...typography.caption, color: colors.info, fontWeight: '700' },
   safe: { flex: 1, backgroundColor: colors.background },
   coinsBadge: {

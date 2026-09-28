@@ -22,6 +22,8 @@ import {
   applyLevelResult,
   applyModeResult,
   applyUpgradePurchase,
+  applyLiveryPurchase,
+  applyLiverySelect,
   createDefaultSave,
   setTraineeName,
   type QuizAttempt,
@@ -49,6 +51,8 @@ interface ProgressionActions {
     flags: ResultFlags,
   ) => LevelResultOutcome;
   buyUpgrade: (upgradeId: string) => boolean;
+  buyLivery: (liveryId: string) => boolean;
+  selectLivery: (liveryId: string) => boolean;
   toggleSetting: (key: keyof SettingsState) => void;
   setLastPlayed: (levelId: string) => void;
   resetProgress: () => void;
@@ -105,6 +109,18 @@ export const useProgression = create<ProgressionStore>()(
         const purchase = applyUpgradePurchase(get(), upgradeId);
         if (purchase.ok) set(purchase.save);
         return purchase.ok;
+      },
+
+      buyLivery: (liveryId) => {
+        const purchase = applyLiveryPurchase(get(), liveryId);
+        if (purchase.ok) set(purchase.save);
+        return purchase.ok;
+      },
+
+      selectLivery: (liveryId) => {
+        const pick = applyLiverySelect(get(), liveryId);
+        if (pick.ok) set(pick.save);
+        return pick.ok;
       },
 
       toggleSetting: (key) => {
@@ -164,6 +180,7 @@ export const useProgression = create<ProgressionStore>()(
         lastPlayedLevelId: state.lastPlayedLevelId,
         induction: state.induction,
         modes: state.modes,
+        cosmetics: state.cosmetics,
       }),
       migrate: (persisted) => migrateSave((persisted ?? {}) as Partial<SaveData>),
       merge: (persisted, current) => {
@@ -201,5 +218,6 @@ export function getCurrentSave(): SaveData {
     lastPlayedLevelId: state.lastPlayedLevelId,
     induction: state.induction,
     modes: state.modes,
+    cosmetics: state.cosmetics,
   };
 }

@@ -4,6 +4,7 @@
  * cover save/load without React Native.
  */
 
+import { LIVERIES, createDefaultCosmetics, isLiveryOwned, migrateCosmetics, type CosmeticsState } from '@/game/config/liveries';
 import { balance } from '../game/config/balance';
 import { UPGRADES, upgradeCost } from '../game/config/equipment';
 import { modeRewards } from '../game/config/rewards';
@@ -112,6 +113,7 @@ export interface SaveData {
   lastPlayedLevelId: string | null;
   induction: InductionState;
   modes: ModesState;
+  cosmetics: CosmeticsState;
 }
 
 export interface ModesState {
@@ -171,6 +173,7 @@ export function createDefaultSave(): SaveData {
     coins: 0,
     levels: {},
     upgrades: {},
+    cosmetics: createDefaultCosmetics(),
     achievements: {},
     statistics: {
       totalTonsMoved: 0,
@@ -253,6 +256,7 @@ export function migrateSave(data: Partial<SaveData> & { version?: number }): Sav
     settings: { ...base.settings, ...(data.settings ?? {}) },
     induction: migrateInduction(data.induction),
     modes: migrateModes(data.modes),
+    cosmetics: migrateCosmetics(data.cosmetics),
     version: SAVE_VERSION,
   };
   return merged;
@@ -624,6 +628,28 @@ export function applyUpgradePurchase(save: SaveData, upgradeId: string): Upgrade
       upgrades: { ...save.upgrades, [upgradeId]: level + 1 },
     },
   };
+}
+
+/** Buys a coin livery and equips it. */
+export function applyLiveryPurchase(save: SaveData, liveryId: string): UpgradePurchaseResult {
+  const livery = LIVERIES.find((l) => l.id === liveryId);
+  if (!livery || livery.unlockThreeStars !== undefined || livery.cost === 0) return { save, ok: false };
+  if (save.cosmetics.owned.includes(liveryId) || save.coins < livery.cost) return { save, ok: false };
+  return {
+    ok: true,
+    save: {
+      ...save,
+      coins: save.coins - livery.cost,
+      cosmetics: { owned: [...save.cosmetics.owned, liveryId], livery: liveryId },
+    },
+  };
+}
+
+/** Equips a livery the player owns. */
+export function applyLiverySelect(save: SaveData, liveryId: string): UpgradePurchaseResult {
+  const livery = LIVERIES.find((l) => l.id === liveryId);
+  if (!livery || !isLiveryOwned(save.cosmetics, livery, save.statistics.threeStarLevels)) return { save, ok: false };
+  return { ok: true, save: { ...save, cosmetics: { ...save.cosmetics, livery: liveryId } } };
 }
 
 /* ------------------------------------------------------------------ */

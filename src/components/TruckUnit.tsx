@@ -20,6 +20,7 @@ import Animated, {
 import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import { balance } from '@/game/config/balance';
 import { colors } from '@/theme/tokens';
+import { liveryById } from '@/game/config/liveries';
 import type { Point, TruckRuntimeState } from '@/types/game';
 
 interface TruckUnitProps {
@@ -36,6 +37,8 @@ interface TruckUnitProps {
   parkSide?: 1 | -1;
   /** Show the name pill (zoomed in or selected) — keeps crowded maps readable. */
   showLabel?: boolean;
+  /** Cosmetic paint scheme id. */
+  liveryId?: string;
   onPress: () => void;
 }
 
@@ -71,6 +74,7 @@ export function TruckUnit({
   running,
   parkSide = 1,
   showLabel = true,
+  liveryId,
   onPress,
 }: TruckUnitProps) {
   const reduceMotion = useReducedMotion();
@@ -125,6 +129,7 @@ export function TruckUnit({
   const loadHeight = bedHeight * fill;
   const center = box / 2;
   const k = r / 12;
+  const paint = liveryById(liveryId);
 
   return (
     <Animated.View pointerEvents="box-none" style={[styles.wrap, { width: box, height: box }, wrapStyle]}>
@@ -152,13 +157,13 @@ export function TruckUnit({
             <Circle cx={center} cy={center} r={r} fill={color} stroke={colors.card} strokeWidth={1.2 * scale} />
             <G transform={`translate(${center} ${center}) scale(${k})`}>
               {/* Dump bed with material heaped inside by load fraction */}
-              <Path d="M-9.5 -4 L3 -4 L3 3 L-8 3 Z" fill={colors.surface} />
+              <Path d="M-9.5 -4 L3 -4 L3 3 L-8 3 Z" fill={paint.bed} />
               {loadHeight > 0 ? (
                 <Rect x={-8.5} y={3 - loadHeight} width={10.5} height={loadHeight} fill={colors.secondary} />
               ) : null}
               {/* Cab */}
-              <Path d="M3.8 -3 L7 -3 L9.5 0.5 L9.5 3 L3.8 3 Z" fill={colors.card} />
-              <Path d="M5 -2 L6.6 -2 L8.2 0.4 L5 0.4 Z" fill={colors.info} />
+              <Path d="M3.8 -3 L7 -3 L9.5 0.5 L9.5 3 L3.8 3 Z" fill={paint.cab} />
+              <Path d="M5 -2 L6.6 -2 L8.2 0.4 L5 0.4 Z" fill={paint.glass} />
               {/* Chassis + wheels */}
               <Rect x={-9} y={3} width={18.5} height={1.6} fill={colors.surface} />
               <Circle cx={-5.5} cy={5.6} r={2.4} fill={colors.surface} stroke={colors.card} strokeWidth={0.8} />
