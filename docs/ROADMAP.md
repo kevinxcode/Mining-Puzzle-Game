@@ -25,9 +25,9 @@ Effort: **S** = days, **M** = 1–2 weeks, **L** = 3+ weeks (small team).
 |---|---|---|---|
 | 1 | Fill contact details in privacy policy, publish on Google Sites | S | Needed for the Play Console listing |
 | 2 | First EAS production build (`eas build -p android --profile production`) + internal testing track | S | Requires `eas login`; enrol in Play App Signing |
-| 3 | Store listing: screenshots, feature graphic, short/long description | S | Can reuse `scripts/generate-art.js` style |
+| 3 | ~~Store listing: screenshots, feature graphic, short/long description~~ | S | **Done** — `docs/store/` (listing.md, icon-512, feature graphic, 6 screenshots from a release build) |
 | 4 | Crash reporting (e.g. Sentry) | S | Needs a privacy-policy update |
-| 5 | Status bar icons on home screen (still dark on dark art) | S | Known bug |
+| 5 | ~~Status bar icons on home screen~~ | S | **Done** — verified light on the home art |
 
 ## Planned — game features
 

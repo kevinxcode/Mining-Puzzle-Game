@@ -105,6 +105,7 @@ const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${ICON}" height=
   ${emblemMachines(512, 600, 1)}
 </svg>`;
 render(iconSvg, 'icon.png', 1024);
+render(iconSvg, 'play-store-icon-512.png', 512);
 
 // Android adaptive foreground: subject inside the 66% safe zone, transparent background.
 const adaptiveSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${ICON}" height="${ICON}" viewBox="0 0 ${ICON} ${ICON}">
@@ -178,3 +179,24 @@ render(
   'bg-induction.png',
   W,
 );
+
+/* ---------- Play Store feature graphic (1024x500) ---------- */
+const FG_W = 1024;
+const FG_H = 500;
+const featureSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${FG_W}" height="${FG_H}" viewBox="0 0 ${FG_W} ${FG_H}">
+  <defs>
+    <linearGradient id="fgsky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A2233"/><stop offset="0.6" stop-color="#7A4A3A"/><stop offset="1" stop-color="#E0874A"/>
+    </linearGradient>
+  </defs>
+  <rect width="${FG_W}" height="${FG_H}" fill="url(#fgsky)"/>
+  <circle cx="820" cy="210" r="110" fill="${C.yellow}" opacity="0.85"/>
+  <path d="M-20 330 L160 210 L300 290 L470 180 L640 300 L820 220 L1044 320 L1044 520 L-20 520 Z" fill="#5A4238"/>
+  ${terraces(FG_W, FG_H, 330, ['#7E5C40', '#946B4A', '#A97C55', '#BF9063'])}
+  ${truck(610, 330, 0.72)}
+  ${excavator(430, 300, 0.85)}
+  <text x="60" y="170" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="900" fill="#F5F3EF">MINING</text>
+  <text x="60" y="250" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="900" fill="#F5F3EF">PUZZLE</text>
+  <text x="62" y="298" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" letter-spacing="6" fill="${C.yellow}">LOAD · HAUL · DUMP</text>
+</svg>`;
+render(featureSvg, 'feature-graphic.png', FG_W);
