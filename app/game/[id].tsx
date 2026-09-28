@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { AppState, StyleSheet, Text, View } from 'react-native';
+import { AppState, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -49,7 +49,8 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ProductionMeter } from '@/components/ProductionMeter';
 import { RouteSheet } from '@/components/RouteSheet';
 import { TutorialCoachmark } from '@/components/TutorialCoachmark';
-import { nextRouteAfter, resolveLevel } from '@/game/levels/modeLevels';
+import { nextRouteAfter, parseModeLevelId, resolveLevel } from '@/game/levels/modeLevels';
+import { buildShareText } from '@/game/share';
 import { computeHint, HINTS_PER_RUN, type Hint, type HintAction } from '@/game/engine/hintEngine';
 import { playSfx } from '@/services/audio';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
@@ -239,6 +240,20 @@ function GameScreen({ levelId }: { levelId: string }) {
       playSfx('tap');
       hapticSuccess();
     }
+  };
+
+  const shareResult = () => {
+    const isMode = Boolean(parseModeLevelId(level.id));
+    const message = buildShareText({
+      levelTitle: isMode ? level.name : `Level ${level.id} · ${level.regionName}`,
+      success: state.status === 'success',
+      stars: state.status === 'success' ? projectedStars : 0,
+      tons: state.stats.tonsMoved,
+      targetTons: state.targetTons,
+      seconds: state.elapsed,
+      efficiency: computeEfficiency(state),
+    });
+    Share.share({ message }).catch(() => undefined);
   };
 
   const nextLevel = () => {
@@ -465,6 +480,7 @@ function GameScreen({ levelId }: { levelId: string }) {
         tip={failure.tip}
         onNext={nextLevel}
         onReplay={replay}
+        onShare={shareResult}
         onHome={() => router.replace('/')}
         onChangeStrategy={replay}
       />

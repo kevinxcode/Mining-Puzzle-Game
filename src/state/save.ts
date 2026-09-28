@@ -90,12 +90,21 @@ export interface ModesState {
     bestShift: number;
     bestTons: number;
   };
+  weekly: {
+    /** ISO week (YYYY-Www) of the last paid weekly win. */
+    lastWinWeek: string | null;
+    /** Week the best score belongs to. */
+    bestWeek: string | null;
+    bestScore: number;
+    totalWins: number;
+  };
 }
 
 export function createDefaultModes(): ModesState {
   return {
     daily: { lastWinDate: null, streak: 0, bestScoreDate: null, bestScoreToday: 0, totalWins: 0 },
     endless: { bestShift: 0, bestTons: 0 },
+    weekly: { lastWinWeek: null, bestWeek: null, bestScore: 0, totalWins: 0 },
   };
 }
 
@@ -184,6 +193,12 @@ function migrateModes(data: Partial<ModesState> | undefined): ModesState {
     endless: {
       bestShift: num(data?.endless?.bestShift, 0),
       bestTons: num(data?.endless?.bestTons, 0),
+    },
+    weekly: {
+      lastWinWeek: str(data?.weekly?.lastWinWeek),
+      bestWeek: str(data?.weekly?.bestWeek),
+      bestScore: num(data?.weekly?.bestScore, 0),
+      totalWins: num(data?.weekly?.totalWins, 0),
     },
   };
 }
@@ -462,6 +477,7 @@ export function applyModeResult(
     modes: {
       daily: { ...save.modes.daily },
       endless: { ...save.modes.endless },
+      weekly: { ...save.modes.weekly },
     },
   };
   accumulateRunStats(next.statistics, result);
@@ -485,6 +501,21 @@ export function applyModeResult(
         coinsGranted =
           modeRewards.dailyCoins +
           modeRewards.dailyStreakBonus * Math.min(daily.streak, modeRewards.dailyStreakCap);
+      }
+    }
+  } else if (ref.mode === 'weekly') {
+    const weekly = next.modes.weekly;
+    if (weekly.bestWeek !== ref.week) {
+      weekly.bestWeek = ref.week;
+      weekly.bestScore = 0;
+    }
+    if (result.success) {
+      weekly.bestScore = Math.max(weekly.bestScore, result.score);
+      if (weekly.lastWinWeek !== ref.week) {
+        weekly.lastWinWeek = ref.week;
+        weekly.totalWins += 1;
+        xpGranted = modeRewards.weeklyXp;
+        coinsGranted = modeRewards.weeklyCoins;
       }
     }
   } else if (result.success) {

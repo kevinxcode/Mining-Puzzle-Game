@@ -23,4 +23,7 @@ export const modeRewards = {
   endlessCoinsBase: 20,
   endlessCoinsPerShift: 10,
   endlessXpPerShift: 20,
+  /** Paid once per ISO week for the first weekly win. */
+  weeklyCoins: 400,
+  weeklyXp: 150,
 } as const;

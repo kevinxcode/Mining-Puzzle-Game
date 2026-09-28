@@ -6,10 +6,18 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CalendarDays, CheckCircle2, Flame, Infinity as InfinityIcon, Play, Trophy } from 'lucide-react-native';
+import { CalendarDays, CalendarRange, CheckCircle2, Flame, Infinity as InfinityIcon, Play, Trophy } from 'lucide-react-native';
 import { colors, iconSizes, layout, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { modeRewards } from '@/game/config/rewards';
-import { buildDailyLevel, dailyLevelId, endlessLevelId, localDateKey } from '@/game/levels/modeLevels';
+import {
+  buildDailyLevel,
+  buildWeeklyLevel,
+  dailyLevelId,
+  endlessLevelId,
+  isoWeekKey,
+  localDateKey,
+  weeklyLevelId,
+} from '@/game/levels/modeLevels';
 import { useProgression } from '@/state/progressionStore';
 import { FadeInView } from '@/components/FadeInView';
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -26,6 +34,11 @@ export default function ModesScreen() {
   const bestToday = modes.daily.bestScoreDate === today ? modes.daily.bestScoreToday : 0;
   const nextStreak = Math.min(modes.daily.streak + 1, modeRewards.dailyStreakCap);
   const dailyReward = modeRewards.dailyCoins + modeRewards.dailyStreakBonus * nextStreak;
+
+  const week = isoWeekKey();
+  const weekly = buildWeeklyLevel(week);
+  const wonThisWeek = modes.weekly.lastWinWeek === week;
+  const bestThisWeek = modes.weekly.bestWeek === week ? modes.weekly.bestScore : 0;
 
   const open = (levelId: string) => {
     playSfx('tap');
@@ -71,6 +84,40 @@ export default function ModesScreen() {
         </FadeInView>
 
         <FadeInView index={1} style={[styles.card, shadows.raised]}>
+          <View style={styles.cardHead}>
+            <View style={[styles.badge, { backgroundColor: colors.secondary }]}>
+              <CalendarRange size={iconSizes.md} color={colors.surface} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.eyebrow}>WEEKLY CHALLENGE · {week}</Text>
+              <Text style={styles.title} accessibilityRole="header">
+                {weekly.regionName}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.body}>
+            A tougher shift that lasts all week: move {weekly.targetTons} t in {Math.round(weekly.timeLimit / 60)} min. Beat your best and share it.
+          </Text>
+          <View style={styles.stats}>
+            <Stat icon={<Trophy size={iconSizes.sm} color={colors.secondary} />} label="Best this week" value={bestThisWeek ? formatNumber(bestThisWeek) : '—'} />
+            <Stat icon={<CheckCircle2 size={iconSizes.sm} color={colors.success} />} label="Weeks won" value={`${modes.weekly.totalWins}`} />
+          </View>
+          {wonThisWeek ? (
+            <View style={styles.done}>
+              <CheckCircle2 size={iconSizes.sm} color={colors.success} />
+              <Text style={styles.doneText}>Weekly reward collected — keep pushing your best score.</Text>
+            </View>
+          ) : (
+            <Text style={styles.reward}>Win this week: +{modeRewards.weeklyCoins} coins · +{modeRewards.weeklyXp} XP</Text>
+          )}
+          <PrimaryButton
+            label={wonThisWeek ? 'REPLAY WEEKLY' : 'PLAY WEEKLY'}
+            icon={<Play size={iconSizes.sm} color={colors.textOnDark} />}
+            onPress={() => open(weeklyLevelId(week))}
+          />
+        </FadeInView>
+
+        <FadeInView index={2} style={[styles.card, shadows.raised]}>
           <View style={styles.cardHead}>
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
               <InfinityIcon size={iconSizes.md} color={colors.textOnDark} />

@@ -18,6 +18,7 @@ import {
   Lightbulb,
   RotateCcw,
   SkipForward,
+  Share2,
   Sparkles,
   Target,
   TriangleAlert,
@@ -43,6 +44,8 @@ interface MissionResultProps {
   tip?: string;
   onNext: () => void;
   onReplay: () => void;
+  /** Opens the system share sheet with a result card. */
+  onShare?: () => void;
   onHome: () => void;
   onChangeStrategy: () => void;
 }
@@ -63,6 +66,7 @@ export function MissionResult({
   tip,
   onNext,
   onReplay,
+  onShare,
   onHome,
   onChangeStrategy,
 }: MissionResultProps) {
@@ -126,6 +130,15 @@ export function MissionResult({
                 </View>
               )}
 
+              {onShare ? (
+                <PrimaryButton
+                  label="SHARE RESULT"
+                  variant="ghost"
+                  icon={<Share2 size={iconSizes.sm} color={colors.textOnDark} />}
+                  onPress={onShare}
+                  style={styles.shareButton}
+                />
+              ) : null}
               {success ? (
                 <View style={styles.buttons}>
                   <PrimaryButton label="NEXT LEVEL" icon={<SkipForward size={iconSizes.sm} color={colors.textOnDark} />} onPress={onNext} />
@@ -166,6 +179,7 @@ function Tile({ icon, label, value, wide }: { icon: ReactNode; label: string; va
 }
 
 const styles = StyleSheet.create({
+  shareButton: { marginBottom: spacing.sm },
   backdrop: {
     flex: 1,
     backgroundColor: colors.backdrop,

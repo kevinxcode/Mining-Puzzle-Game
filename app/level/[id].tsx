@@ -76,7 +76,7 @@ export default function BriefingScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScreenHeader
-        title={modeRef ? (modeRef.mode === 'daily' ? 'Daily Challenge' : `Endless · Shift ${modeRef.shift}`) : `Level ${level.id}`}
+        title={modeRef ? (modeRef.mode === 'daily' ? 'Daily Challenge' : modeRef.mode === 'weekly' ? 'Weekly Challenge' : `Endless · Shift ${modeRef.shift}`) : `Level ${level.id}`}
         subtitle={level.regionName}
         right={<StarRating count={record?.stars ?? 0} size={iconSizes.sm} />}
       />
