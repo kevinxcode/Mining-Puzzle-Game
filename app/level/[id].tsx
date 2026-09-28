@@ -12,6 +12,7 @@ import {
   ChevronUp,
   Clock,
   Fuel,
+  Ghost,
   Gift,
   Pickaxe,
   Play,
@@ -198,6 +199,15 @@ export default function BriefingScreen() {
         </FadeInView>
       </ScrollView>
       <View style={styles.footer}>
+        {record?.ghost ? (
+          <PrimaryButton
+            label="WATCH BEST RUN"
+            variant="outline"
+            accessibilityLabel={`Watch your best run, score ${record.bestScore}`}
+            icon={<Ghost size={iconSizes.sm} color={colors.primary} />}
+            onPress={() => router.push(`/game/${level.id}?ghost=1` as never)}
+          />
+        ) : null}
         <PrimaryButton
           label="START MISSION"
           icon={<Play size={iconSizes.md} color={colors.textOnDark} fill={colors.textOnDark} />}
@@ -296,6 +306,7 @@ const styles = StyleSheet.create({
   sectionBody: { gap: spacing.xs + 2 },
   value: { ...typography.body, color: colors.text },
   footer: {
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     paddingTop: spacing.sm,

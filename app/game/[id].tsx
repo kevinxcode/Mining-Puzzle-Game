@@ -13,7 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
   FastForward,
+  Ghost,
   Lightbulb,
+  RotateCcw,
   Undo2,
   X,
   Pause,
@@ -51,6 +53,7 @@ import { RouteSheet } from '@/components/RouteSheet';
 import { TutorialCoachmark } from '@/components/TutorialCoachmark';
 import { nextRouteAfter, parseModeLevelId, resolveLevel } from '@/game/levels/modeLevels';
 import { buildShareText } from '@/game/share';
+import { isRunLog } from '@/game/replay';
 import { computeHint, HINTS_PER_RUN, type Hint, type HintAction } from '@/game/engine/hintEngine';
 import { playSfx } from '@/services/audio';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
@@ -86,16 +89,19 @@ function BarButton({
 }
 
 export default function GameRoute() {
-  const params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; ghost?: string }>();
   const levelId = String(params.id);
+  const ghostMode = params.ghost === '1';
   // Keyed by level id: moving to another level remounts, so the simulation
   // controller and tutorial state never carry over from the previous level.
-  return <GameScreen key={levelId} levelId={levelId} />;
+  return <GameScreen key={`${levelId}${ghostMode ? ':ghost' : ''}`} levelId={levelId} ghostMode={ghostMode} />;
 }
 
-function GameScreen({ levelId }: { levelId: string }) {
+function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: boolean }) {
   const router = useRouter();
   const level = resolveLevel(levelId);
+  const savedGhost = useProgression((s) => s.levels[levelId]?.ghost);
+  const ghostLog = ghostMode && isRunLog(savedGhost) ? savedGhost : null;
 
   const upgrades = useProgression((s) => s.upgrades);
   const recordLevelResult = useProgression((s) => s.recordLevelResult);
@@ -103,7 +109,7 @@ function GameScreen({ levelId }: { levelId: string }) {
   // Simulation controller lives outside React — created once per level.
   const controllerRef = useRef<SimController | null>(null);
   if (level && !controllerRef.current) {
-    controllerRef.current = new SimController(level, upgrades);
+    controllerRef.current = new SimController(level, upgrades, ghostLog);
   }
   const controller = controllerRef.current;
 
@@ -111,7 +117,7 @@ function GameScreen({ levelId }: { levelId: string }) {
   const [routeSheetOpen, setRouteSheetOpen] = useState(false);
   const [selectedTruckId, setSelectedTruckId] = useState<string | null>(null);
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [tutorialDone, setTutorialDone] = useState(!level?.tutorialSteps);
+  const [tutorialDone, setTutorialDone] = useState(!level?.tutorialSteps || ghostMode);
   const [resultRecorded, setResultRecorded] = useState(false);
   const [hintsLeft, setHintsLeft] = useState(HINTS_PER_RUN);
   const [hint, setHint] = useState<Hint | null>(null);
@@ -146,6 +152,11 @@ function GameScreen({ levelId }: { levelId: string }) {
     const status = sim.state.status;
     if (status !== 'success' && status !== 'failed') return;
     if (sim.state.rewarded || resultRecorded) return;
+    if (sim.ghost) {
+      // Watching a replay never records results or pays rewards.
+      sim.markRewarded();
+      return;
+    }
     setResultRecorded(true);
 
     const simState = sim.state;
@@ -167,6 +178,7 @@ function GameScreen({ levelId }: { levelId: string }) {
       playtimeSeconds: Math.round(simState.elapsed),
       xpGain: success ? rewards.xp : 0,
       coinsGain: success ? rewards.coins : 0,
+      ghost: sim.runLog(),
     };
     const recorded = recordLevelResult(lvl.id, input, flags);
     setGrantedRewards({ xp: recorded.xpGranted, coins: recorded.coinsGranted });
@@ -299,8 +311,14 @@ function GameScreen({ levelId }: { levelId: string }) {
 
         {/* Mining map — the visual focus */}
         <View style={styles.mapWrap}>
+          {ghostLog ? (
+            <View style={styles.ghostBadge} pointerEvents="none" accessibilityLiveRegion="polite">
+              <Ghost size={iconSizes.sm} color={colors.textOnDark} />
+              <Text style={styles.ghostText}>BEST RUN REPLAY</Text>
+            </View>
+          ) : null}
           {/* Hint + undo */}
-          <View style={styles.mapTools} pointerEvents="box-none">
+          <View style={[styles.mapTools, ghostLog && styles.hidden]} pointerEvents={ghostLog ? 'none' : 'box-none'}>
             <PressableScale
               style={[styles.toolButton, hintsLeft === 0 && styles.toolDisabled]}
               disabled={hintsLeft === 0 || finished}
@@ -396,9 +414,16 @@ function GameScreen({ levelId }: { levelId: string }) {
           accessibilityLabel={`Simulation speed ${state.speed}x — tap to change`}
           onPress={cycleSpeed}
         />
-        {ready ? (
+        {ghostLog && finished ? (
           <PrimaryButton
-            label="START"
+            label="WATCH AGAIN"
+            icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />}
+            onPress={() => controller.reset()}
+            style={styles.startButton}
+          />
+        ) : ready ? (
+          <PrimaryButton
+            label={ghostLog ? 'WATCH' : 'START'}
             accessibilityLabel="Start operation"
             icon={<Play size={iconSizes.sm} color={colors.textOnDark} fill={colors.textOnDark} />}
             onPress={() => {
@@ -464,8 +489,17 @@ function GameScreen({ levelId }: { levelId: string }) {
       ) : null}
 
       {/* Result overlay */}
+      {ghostLog && finished ? (
+        <Animated.View entering={FadeInUp} style={styles.ghostEnd}>
+          <Text style={styles.ghostEndTitle}>Replay finished</Text>
+          <Text style={styles.hintText}>
+            {Math.round(state.stats.tonsMoved)} / {state.targetTons} t in {Math.round(state.elapsed)} s · {computeEfficiency(state)}% efficiency
+          </Text>
+          <PrimaryButton label="PLAY THIS LEVEL" onPress={() => router.replace(`/game/${level.id}` as never)} />
+        </Animated.View>
+      ) : null}
       <MissionResult
-        visible={finished}
+        visible={finished && !ghostLog}
         success={state.status === 'success'}
         stars={state.status === 'success' ? projectedStars : 0}
         tonsMoved={state.stats.tonsMoved}
@@ -489,6 +523,33 @@ function GameScreen({ levelId }: { levelId: string }) {
 }
 
 const styles = StyleSheet.create({
+  hidden: { opacity: 0 },
+  ghostBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    zIndex: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: 'rgba(76,141,214,0.9)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+  },
+  ghostText: { ...typography.label, color: colors.textOnDark, letterSpacing: 1 },
+  ghostEnd: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    bottom: 120,
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    ...shadows.raised,
+  },
+  ghostEndTitle: { ...typography.heading, color: colors.textOnDark },
   safe: { flex: 1, backgroundColor: colors.background },
   container: {
     flex: 1,

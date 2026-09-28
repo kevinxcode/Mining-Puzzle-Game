@@ -19,6 +19,7 @@ import {
   startOperation,
   tick,
 } from './engine/simulationEngine';
+import { MAX_REPLAY_COMMANDS, applyDue, type ReplayCommand, type RunLog } from './replay';
 
 type Listener = () => void;
 
@@ -41,10 +42,36 @@ export class SimController {
   private lastFrame = 0;
   private accumulator = 0;
   private history: UndoStep[] = [];
+  /** Sim ticks run since start — the timestamp for recorded commands. */
+  private tickIndex = 0;
+  private commands: ReplayCommand[] = [];
+  private upgrades: Record<string, number>;
+  /** When set, the controller plays this log back and ignores player input. */
+  readonly ghost: RunLog | null;
+  private ghostNext = 0;
 
-  constructor(level: LevelConfig, upgrades: Record<string, number> = {}) {
+  constructor(level: LevelConfig, upgrades: Record<string, number> = {}, ghost: RunLog | null = null) {
     this.level = level;
-    this.state = createSimState(level, upgrades);
+    this.ghost = ghost;
+    this.upgrades = ghost ? ghost.upgrades : upgrades;
+    this.state = createSimState(level, this.upgrades);
+    if (ghost) this.ghostNext = applyDue(this.state, level, ghost.commands, 0, 0);
+  }
+
+  /** The commands of the current run, replayable with simulateRunLog. */
+  runLog(): RunLog {
+    return { upgrades: { ...this.upgrades }, commands: this.commands.slice(0, MAX_REPLAY_COMMANDS) };
+  }
+
+  private record(cmd: ReplayCommand): void {
+    if (!this.ghost) this.commands.push(cmd);
+  }
+
+  /** Runs exactly one fixed sub-tick (plus any ghost commands due). */
+  stepOnce(): void {
+    tick(this.state, this.level, balance.baseTickSeconds);
+    this.tickIndex += 1;
+    if (this.ghost) this.ghostNext = applyDue(this.state, this.level, this.ghost.commands, this.ghostNext, this.tickIndex);
   }
 
   subscribe = (listener: Listener): (() => void) => {
@@ -92,7 +119,7 @@ export class SimController {
         this.accumulator = 0;
         break;
       }
-      tick(this.state, this.level, balance.baseTickSeconds);
+      this.stepOnce();
     }
     this.notify();
   }
@@ -100,7 +127,13 @@ export class SimController {
   /* --- player-facing actions --- */
 
   start(): void {
-    startOperation(this.state, this.level);
+    if (this.ghost) {
+      // Planning + start were already applied from the log at tick 0.
+      this.ghostNext = applyDue(this.state, this.level, this.ghost.commands, this.ghostNext, this.tickIndex);
+    } else {
+      startOperation(this.state, this.level);
+      if (this.state.status === 'running') this.record({ t: this.tickIndex, kind: 'start' });
+    }
     if (this.state.status === 'running') this.play();
     this.notify();
   }
@@ -120,16 +153,20 @@ export class SimController {
   }
 
   assignTruck(truckId: string, excavatorId: string): boolean {
+    if (this.ghost) return false;
     const step = this.snapshot(truckId);
     const ok = assignTruckInEngine(this.state, this.level, truckId, excavatorId);
+    if (ok) this.record({ t: this.tickIndex, kind: 'assign', truckId, target: excavatorId });
     if (ok && step) this.remember(step);
     this.notify();
     return ok;
   }
 
   setTruckRoute(truckId: string, routeId: string): boolean {
+    if (this.ghost) return false;
     const step = this.snapshot(truckId);
     const ok = setTruckRouteInEngine(this.state, this.level, truckId, routeId);
+    if (ok) this.record({ t: this.tickIndex, kind: 'route', truckId, target: routeId });
     if (ok && step) this.remember(step);
     this.notify();
     return ok;
@@ -146,10 +183,12 @@ export class SimController {
     const truck = this.state.trucks.find((t) => t.id === step.truckId);
     if (!truck) return false;
     if (truck.assignedExcavatorId !== step.excavatorId) {
-      assignTruckInEngine(this.state, this.level, step.truckId, step.excavatorId);
+      if (assignTruckInEngine(this.state, this.level, step.truckId, step.excavatorId))
+        this.record({ t: this.tickIndex, kind: 'assign', truckId: step.truckId, target: step.excavatorId });
     }
     if (truck.routeId !== step.routeId) {
-      setTruckRouteInEngine(this.state, this.level, step.truckId, step.routeId);
+      if (setTruckRouteInEngine(this.state, this.level, step.truckId, step.routeId))
+        this.record({ t: this.tickIndex, kind: 'route', truckId: step.truckId, target: step.routeId });
     }
     this.notify();
     return true;
@@ -166,7 +205,9 @@ export class SimController {
   }
 
   sendToFuel(truckId: string): boolean {
+    if (this.ghost) return false;
     const ok = sendToFuelInEngine(this.state, this.level, truckId);
+    if (ok) this.record({ t: this.tickIndex, kind: 'fuel', truckId });
     this.notify();
     return ok;
   }
@@ -174,8 +215,12 @@ export class SimController {
   /** Reset to planning (change strategy) with fresh state. */
   reset(upgrades: Record<string, number> = {}): void {
     this.pause();
-    this.state = createSimState(this.level, upgrades);
+    if (!this.ghost) this.upgrades = upgrades;
+    this.state = createSimState(this.level, this.upgrades);
     this.history = [];
+    this.commands = [];
+    this.tickIndex = 0;
+    this.ghostNext = this.ghost ? applyDue(this.state, this.level, this.ghost.commands, 0, 0) : 0;
     this.notify();
   }
 

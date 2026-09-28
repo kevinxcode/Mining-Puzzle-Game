@@ -4,6 +4,7 @@
  * cover save/load without React Native.
  */
 
+import type { RunLog } from '@/game/replay';
 import { LIVERIES, createDefaultCosmetics, isLiveryOwned, migrateCosmetics, type CosmeticsState } from '@/game/config/liveries';
 import { balance } from '../game/config/balance';
 import { UPGRADES, upgradeCost } from '../game/config/equipment';
@@ -25,6 +26,8 @@ export interface LevelRecord {
   /** Total XP / coins already paid for this level (replays only pay the difference). */
   xpEarned?: number;
   coinsEarned?: number;
+  /** Command log of the best-scoring run, for ghost replay. */
+  ghost?: RunLog;
 }
 
 export interface StatisticsState {
@@ -162,6 +165,8 @@ export interface LevelResultInput {
   playtimeSeconds: number;
   xpGain: number;
   coinsGain: number;
+  /** Command log of this run (stored when it beats the best score). */
+  ghost?: RunLog;
 }
 
 export class SaveCorruptError extends Error {}
@@ -558,6 +563,8 @@ export function applyLevelResult(
       xpEarned: xpEarned + xpGranted,
       coinsEarned: coinsEarned + coinsGranted,
     };
+    const ghost = result.ghost && (!previous || result.score > previous.bestScore) ? result.ghost : previous?.ghost;
+    if (ghost) next.levels[levelId].ghost = ghost;
   }
 
   const stats = next.statistics;

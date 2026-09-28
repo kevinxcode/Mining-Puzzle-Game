@@ -142,7 +142,7 @@ export default function EquipmentScreen() {
               : owned
                 ? 'Tap to equip'
                 : starLocked
-                  ? `${threeStars}/${livery.unlockThreeStars} three-star levels`
+                  ? `${threeStars}/${livery.unlockThreeStars} 3★ levels`
                   : `${livery.cost} coins`;
             return (
               <PressableScale
@@ -152,7 +152,7 @@ export default function EquipmentScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: equipped }}
                 accessibilityLabel={`${livery.name} livery, ${status}`}
-                style={[styles.liveryCard, equipped && styles.liveryEquipped, !owned && !affordable && styles.entryLocked]}
+                style={[styles.liveryCard, equipped && styles.liveryEquipped, (starLocked || (!owned && !affordable)) && styles.entryLocked]}
               >
                 <LiveryPreview livery={livery} />
                 <Text style={styles.upgradeName} numberOfLines={1}>{livery.name}</Text>
