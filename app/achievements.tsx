@@ -6,19 +6,21 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, Lock, Trophy } from 'lucide-react-native';
 import { colors, iconSizes, layout, radius, shadows, spacing, typography } from '@/theme/tokens';
-import { ACHIEVEMENTS } from '@/game/achievements';
+import { ACHIEVEMENTS, achievementDescription } from '@/game/achievements';
 import { useProgression } from '@/state/progressionStore';
 import { FadeInView } from '@/components/FadeInView';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useT } from '@/i18n';
 
 export default function AchievementsScreen() {
+  const { t, tx } = useT();
   const achievements = useProgression((s) => s.achievements);
   const unlockedCount = ACHIEVEMENTS.filter((a) => achievements[a.id]).length;
   const fraction = ACHIEVEMENTS.length ? unlockedCount / ACHIEVEMENTS.length : 0;
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScreenHeader title="Achievements" />
+      <ScreenHeader title={t('shell.ach.title')} />
       <ScrollView contentContainerStyle={styles.content}>
         <FadeInView style={[styles.summary, shadows.raised]}>
           <View style={styles.trophy}>
@@ -26,7 +28,7 @@ export default function AchievementsScreen() {
           </View>
           <View style={styles.summaryInfo}>
             <Text style={styles.summaryText}>
-              {unlockedCount} / {ACHIEVEMENTS.length} unlocked
+              {t('shell.ach.unlockedCount', { done: unlockedCount, total: ACHIEVEMENTS.length })}
             </Text>
             <View style={styles.track}>
               <View style={[styles.fill, { width: `${Math.round(fraction * 100)}%` }]} />
@@ -35,6 +37,8 @@ export default function AchievementsScreen() {
         </FadeInView>
         {ACHIEVEMENTS.map((achievement, i) => {
           const unlocked = Boolean(achievements[achievement.id]);
+          const name = tx(achievement.name);
+          const description = achievementDescription(achievement);
           return (
             <FadeInView
               key={achievement.id}
@@ -44,7 +48,7 @@ export default function AchievementsScreen() {
               <View
                 style={[styles.icon, unlocked && styles.iconUnlocked]}
                 accessible
-                accessibilityLabel={`${achievement.name}: ${unlocked ? 'unlocked' : 'locked'}. ${achievement.description}`}
+                accessibilityLabel={t('shell.ach.a11y', { name, state: t(unlocked ? 'shell.ach.unlocked' : 'shell.ach.locked'), description })}
               >
                 {unlocked ? (
                   <Check size={iconSizes.sm} color={colors.textOnDark} />
@@ -53,10 +57,10 @@ export default function AchievementsScreen() {
                 )}
               </View>
               <View style={styles.info}>
-                <Text style={styles.name}>{achievement.name}</Text>
-                <Text style={styles.description}>{achievement.description}</Text>
+                <Text style={styles.name}>{name}</Text>
+                <Text style={styles.description}>{description}</Text>
               </View>
-              {unlocked ? <Text style={styles.done}>DONE</Text> : null}
+              {unlocked ? <Text style={styles.done}>{t('shell.ach.done')}</Text> : null}
             </FadeInView>
           );
         })}

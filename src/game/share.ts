@@ -3,6 +3,7 @@
  */
 
 import { formatClock } from '@/utils/format';
+import { t } from '@/i18n/core';
 
 export interface ShareInput {
   levelTitle: string;
@@ -16,11 +17,11 @@ export interface ShareInput {
 
 export function buildShareText(input: ShareInput): string {
   const stars = '⭐'.repeat(Math.max(0, Math.min(3, input.stars))) + '☆'.repeat(3 - Math.max(0, Math.min(3, input.stars)));
-  const outcome = input.success ? 'Shift complete' : 'Target missed';
+  const outcome = input.success ? t('game.share.complete') : t('game.share.missed');
   return [
-    `⛏️ Mining Puzzle Game — ${input.levelTitle}`,
+    t('game.share.title', { level: input.levelTitle }),
     `${stars}  ${outcome}`,
     `🚚 ${Math.round(input.tons)}/${Math.round(input.targetTons)} t · ⏱ ${formatClock(Math.round(input.seconds))} · ⚙️ ${Math.round(input.efficiency)}%`,
-    'Can you run a better shift?',
+    t('game.share.cta'),
   ].join('\n');
 }

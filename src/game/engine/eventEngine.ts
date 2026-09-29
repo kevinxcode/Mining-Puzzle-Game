@@ -6,17 +6,21 @@
 import type { GameEvent, LevelConfig, SimState, TruckRuntime } from '@/types/game';
 import { balance } from '../config/balance';
 import { pushFeed } from './feed';
+import { getLanguage } from '@/i18n/core';
+import { eventMessage } from '../levels/levelText';
 
 export function processEvents(state: SimState, level: LevelConfig): void {
   for (const event of level.events) {
     if (state.eventsFired.includes(event.id)) continue;
     if (event.timeSeconds > state.elapsed) continue;
-    applyEvent(state, event);
+    applyEvent(state, event, level);
     state.eventsFired.push(event.id);
   }
 }
 
-function applyEvent(state: SimState, event: GameEvent): void {
+function applyEvent(state: SimState, event: GameEvent, level: LevelConfig): void {
+  // Display-only text: English keeps the authored message verbatim.
+  const message = getLanguage() === 'en' ? event.message : eventMessage(event, level.map);
   switch (event.type) {
     case 'road-closure':
     case 'road-open':
@@ -24,7 +28,7 @@ function applyEvent(state: SimState, event: GameEvent): void {
       const road = state.roads.find((r) => r.id === event.target);
       if (road) {
         road.closed = event.type === 'road-closure';
-        pushFeed(state, event.message);
+        pushFeed(state, message);
       }
       break;
     }
@@ -35,7 +39,7 @@ function applyEvent(state: SimState, event: GameEvent): void {
         truck.breakdownUntil =
           state.elapsed + (event.durationSeconds ?? balance.breakdownRecoverySeconds);
         state.stats.breakdowns += 1;
-        pushFeed(state, event.message);
+        pushFeed(state, message);
       }
       break;
     }
@@ -43,18 +47,18 @@ function applyEvent(state: SimState, event: GameEvent): void {
       // Speed effect is resolved via activeRainUntil during movement.
     case 'fuel-outage':
       // Refueling pause is resolved via fuelStationOpen in the truck engine.
-      pushFeed(state, event.message);
+      pushFeed(state, message);
       break;
     case 'target-increase':
       state.targetTons += event.amount ?? 0;
-      pushFeed(state, event.message);
+      pushFeed(state, message);
       break;
     case 'efficiency-drop': {
       const excavator = state.excavators.find((e) => e.id === event.target) ?? state.excavators[0];
       if (excavator) {
         excavator.efficiencyModifier = dropMagnitude(excavator);
         excavator.modifierUntil = state.elapsed + (event.durationSeconds ?? 30);
-        pushFeed(state, event.message);
+        pushFeed(state, message);
       }
       break;
     }

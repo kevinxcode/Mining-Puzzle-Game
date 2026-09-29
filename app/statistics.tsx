@@ -22,8 +22,10 @@ import { formatClock, formatFuel, formatNumber, formatRate, formatTons } from '@
 import { FadeInView } from '@/components/FadeInView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { StatCard } from '@/components/StatCard';
+import { useT } from '@/i18n';
 
 export default function StatisticsScreen() {
+  const { t } = useT();
   const stats = useProgression((s) => s.statistics);
   const levelRecords = useProgression((s) => s.levels);
 
@@ -37,30 +39,30 @@ export default function StatisticsScreen() {
 
   const rows = [
     [
-      { label: 'Total tons moved', value: formatTons(stats.totalTonsMoved), accent: colors.primary, icon: <Weight size={s} color={colors.primary} /> },
-      { label: 'Total trips', value: formatNumber(stats.totalTrips), accent: colors.warning, icon: <Repeat size={s} color={colors.warning} /> },
+      { label: t('shell.stats.tons'), value: formatTons(stats.totalTonsMoved), accent: colors.primary, icon: <Weight size={s} color={colors.primary} /> },
+      { label: t('shell.stats.trips'), value: formatNumber(stats.totalTrips), accent: colors.warning, icon: <Repeat size={s} color={colors.warning} /> },
     ],
     [
-      { label: 'Best production rate', value: formatRate(stats.bestProductionRate), accent: colors.info, icon: <Activity size={s} color={colors.info} /> },
-      { label: 'Avg efficiency', value: `${Math.round(stats.averageEfficiency)}%`, accent: colors.success, icon: <Gauge size={s} color={colors.success} /> },
+      { label: t('shell.stats.bestRate'), value: formatRate(stats.bestProductionRate), accent: colors.info, icon: <Activity size={s} color={colors.info} /> },
+      { label: t('shell.stats.efficiency'), value: `${Math.round(stats.averageEfficiency)}%`, accent: colors.success, icon: <Gauge size={s} color={colors.success} /> },
     ],
     [
-      { label: 'Levels completed', value: `${stats.levelsCompleted}`, accent: colors.primary, icon: <CheckCircle2 size={s} color={colors.primary} /> },
-      { label: '3-star levels', value: `${stats.threeStarLevels}`, accent: colors.warning, icon: <Star size={s} color={colors.secondary} fill={colors.secondary} /> },
+      { label: t('shell.stats.levels'), value: `${stats.levelsCompleted}`, accent: colors.primary, icon: <CheckCircle2 size={s} color={colors.primary} /> },
+      { label: t('shell.stats.threeStar'), value: `${stats.threeStarLevels}`, accent: colors.warning, icon: <Star size={s} color={colors.secondary} fill={colors.secondary} /> },
     ],
     [
-      { label: 'Best completion', value: bestTimeDisplay, accent: colors.info, icon: <Timer size={s} color={colors.info} /> },
-      { label: 'Total fuel used', value: formatFuel(stats.totalFuelUsed), accent: colors.danger, icon: <Fuel size={s} color={colors.danger} /> },
+      { label: t('shell.stats.bestTime'), value: bestTimeDisplay, accent: colors.info, icon: <Timer size={s} color={colors.info} /> },
+      { label: t('shell.stats.fuel'), value: formatFuel(stats.totalFuelUsed), accent: colors.danger, icon: <Fuel size={s} color={colors.danger} /> },
     ],
     [
-      { label: 'Total playtime', value: formatClock(stats.totalPlaytimeSeconds), accent: colors.success, icon: <Clock size={s} color={colors.success} /> },
-      { label: 'Missions attempted', value: `${stats.attempts}`, accent: colors.text, icon: <Flag size={s} color={colors.text} /> },
+      { label: t('shell.stats.playtime'), value: formatClock(stats.totalPlaytimeSeconds), accent: colors.success, icon: <Clock size={s} color={colors.success} /> },
+      { label: t('shell.stats.attempts'), value: `${stats.attempts}`, accent: colors.text, icon: <Flag size={s} color={colors.text} /> },
     ],
   ];
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScreenHeader title="Statistics" subtitle="Your career on site" />
+      <ScreenHeader title={t('shell.stats.title')} subtitle={t('shell.stats.subtitle')} />
       <ScrollView contentContainerStyle={styles.content}>
         {rows.map((row, i) => (
           <FadeInView key={i} index={i} style={styles.row}>

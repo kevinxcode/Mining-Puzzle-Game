@@ -22,6 +22,8 @@ import { balance } from '@/game/config/balance';
 import { colors } from '@/theme/tokens';
 import { liveryById } from '@/game/config/liveries';
 import type { Point, TruckRuntimeState } from '@/types/game';
+import { useT } from '@/i18n';
+import { truckStateLabel } from './EquipmentSheet';
 
 interface TruckUnitProps {
   /** Screen coordinates. */
@@ -77,6 +79,7 @@ export function TruckUnit({
   liveryId,
   onPress,
 }: TruckUnitProps) {
+  const { t } = useT();
   const reduceMotion = useReducedMotion();
   const r = 7 * scale;
   const target = PARKED_STATES.has(state)
@@ -144,7 +147,7 @@ export function TruckUnit({
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`${label}, ${state.replace(/-/g, ' ')}, load ${Math.round(fill * 100)}%`}
+        accessibilityLabel={t('game.map.truckA11y', { name: label, status: truckStateLabel(state), load: Math.round(fill * 100) })}
         hitSlop={8}
         style={StyleSheet.absoluteFill}
       >

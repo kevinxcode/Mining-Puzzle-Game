@@ -8,6 +8,7 @@ import { AlarmClock, Clock } from 'lucide-react-native';
 import { colors, iconSizes, layout, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { formatClock, formatTons } from '@/utils/format';
 import { StarRating } from './StarRating';
+import { useT } from '@/i18n';
 
 interface MissionHeaderProps {
   levelName: string;
@@ -28,6 +29,7 @@ export function MissionHeader({
   projectedStars,
   timeCritical,
 }: MissionHeaderProps) {
+  const { t, tx } = useT();
   const progress = Math.max(0, Math.min(1, targetTons > 0 ? tonsMoved / targetTons : 0));
   const done = progress >= 1;
   return (
@@ -35,7 +37,7 @@ export function MissionHeader({
       <View style={styles.topRow}>
         <View style={styles.titleBlock}>
           <Text style={styles.region} numberOfLines={1}>
-            {regionName.toUpperCase()}
+            {tx(regionName).toUpperCase()}
           </Text>
           <Text style={styles.title} numberOfLines={1}>
             {levelName}
@@ -43,7 +45,7 @@ export function MissionHeader({
         </View>
         <View
           style={[styles.timePill, timeCritical && styles.timePillCritical]}
-          accessibilityLabel={`${formatClock(remainingSeconds)} remaining${timeCritical ? ', time is running out' : ''}`}
+          accessibilityLabel={timeCritical ? t('game.header.remainingCritical', { time: formatClock(remainingSeconds) }) : t('game.header.remaining', { time: formatClock(remainingSeconds) })}
         >
           {timeCritical ? (
             <AlarmClock size={iconSizes.xs} color={colors.textOnDark} />

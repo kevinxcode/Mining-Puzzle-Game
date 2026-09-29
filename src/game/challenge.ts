@@ -9,6 +9,7 @@ import { UPGRADES } from './config/equipment';
 import { resolveLevel } from './levels/modeLevels';
 import { MAX_REPLAY_COMMANDS, simulateRunLog, type ReplayCommand, type RunLog } from './replay';
 import { computeRewards, computeStars } from './scoring';
+import { t } from '@/i18n/core';
 
 export const CHALLENGE_PREFIX = 'MPG1.';
 const CODE_PATTERN = /MPG1\.([A-Za-z0-9_-]+)\.([0-9a-f]{8})/;
@@ -114,9 +115,9 @@ export function encodeChallenge(challenge: Challenge): string {
 export function decodeChallenge(text: string): DecodeResult {
   // Chat apps wrap long lines and add text around the code.
   const match = text.replace(/\s+/g, '').match(CODE_PATTERN);
-  if (!match) return { ok: false, error: 'No challenge code found. Paste the whole code starting with MPG1.' };
+  if (!match) return { ok: false, error: t('shell.challenge.errNoCode') };
   const [, body, sum] = match;
-  if (checksum(body) !== sum) return { ok: false, error: 'This code is incomplete or was changed. Ask for it again.' };
+  if (checksum(body) !== sum) return { ok: false, error: t('shell.challenge.errChanged') };
 
   let data: Record<string, unknown>;
   try {
@@ -124,24 +125,24 @@ export function decodeChallenge(text: string): DecodeResult {
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('shape');
     data = parsed as Record<string, unknown>;
   } catch {
-    return { ok: false, error: 'This code could not be read.' };
+    return { ok: false, error: t('shell.challenge.errUnreadable') };
   }
-  if (data.v !== 1) return { ok: false, error: 'This code was made by a newer version of the game. Please update.' };
+  if (data.v !== 1) return { ok: false, error: t('shell.challenge.errNewer') };
 
   const levelId = data.l;
-  if (!isId(levelId) || !resolveLevel(levelId)) return { ok: false, error: 'This code is for a level that does not exist.' };
+  if (!isId(levelId) || !resolveLevel(levelId)) return { ok: false, error: t('shell.challenge.errNoLevel') };
 
   const upgrades = sanitizeUpgrades(data.u);
-  if (!upgrades) return { ok: false, error: 'This code could not be read.' };
+  if (!upgrades) return { ok: false, error: t('shell.challenge.errUnreadable') };
 
   const rawCommands = Array.isArray(data.c) ? data.c : null;
   if (!rawCommands || rawCommands.length === 0 || rawCommands.length > MAX_REPLAY_COMMANDS) {
-    return { ok: false, error: 'This code does not contain a valid run.' };
+    return { ok: false, error: t('shell.challenge.errInvalidRun') };
   }
   const commands: ReplayCommand[] = [];
   for (const raw of rawCommands) {
     const cmd = unpack(raw, commands.length > 0 ? commands[commands.length - 1].t : 0);
-    if (!cmd) return { ok: false, error: 'This code does not contain a valid run.' };
+    if (!cmd) return { ok: false, error: t('shell.challenge.errInvalidRun') };
     commands.push(cmd);
   }
 

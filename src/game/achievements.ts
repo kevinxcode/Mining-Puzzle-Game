@@ -7,6 +7,7 @@ import type { ResultFlags } from '@/game/scoring';
 import type { SaveData } from '@/state/save';
 import { TOTAL_LEVELS } from '@/game/levels/levelFactory';
 import { balance } from '@/game/config/balance';
+import { t, tx } from '@/i18n/core';
 
 export interface AchievementDef {
   id: string;
@@ -23,6 +24,13 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'heavy-hauler', name: 'Heavy Hauler', description: `Move ${balance.achievementTons} tons in total` },
   { id: 'logistics-master', name: 'Logistics Master', description: `Complete all ${TOTAL_LEVELS} levels` },
 ];
+
+/** Description in the current language (numbers filled in for templated ones). */
+export function achievementDescription(a: AchievementDef): string {
+  if (a.id === 'heavy-hauler') return t('shell.ach.heavyHaulerDesc', { tons: balance.achievementTons });
+  if (a.id === 'logistics-master') return t('shell.ach.masterDesc', { total: TOTAL_LEVELS });
+  return tx(a.description);
+}
 
 /** Returns achievement ids unlocked by the latest result (not yet in the save). */
 export function evaluateAchievements(save: SaveData, flags: ResultFlags): string[] {

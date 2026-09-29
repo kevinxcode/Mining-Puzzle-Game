@@ -165,13 +165,23 @@ export function resolveModeLevel(id: string): LevelConfig | undefined {
 
 /** Where the result screen's "Next" button goes for a finished run. */
 export function nextRouteAfter(levelId: string, totalLevels: number): string {
+  if (levelId.startsWith(CUSTOM_LEVEL_PREFIX)) return '/editor';
   const ref = parseModeLevelId(levelId);
   if (!ref) return `/level/${Math.min(totalLevels, Number(levelId) + 1)}`;
   if (ref.mode === 'daily' || ref.mode === 'weekly') return '/modes';
   return `/level/${withFleetClass(endlessLevelId(ref.shift + 1), ref.fleetClass)}`;
 }
 
-/** Any playable level: a campaign level id or a daily/endless mode id. */
+/** Player-made levels live in app state; the store registers itself here (keeps this module pure). */
+let customLevelResolver: ((id: string) => LevelConfig | undefined) | null = null;
+export function registerCustomLevelResolver(resolver: (id: string) => LevelConfig | undefined): void {
+  customLevelResolver = resolver;
+}
+
+const CUSTOM_LEVEL_PREFIX = 'custom-';
+
+/** Any playable level: a campaign level id, a daily/weekly/endless mode id or a custom level id. */
 export function resolveLevel(id: string): LevelConfig | undefined {
+  if (id.startsWith(CUSTOM_LEVEL_PREFIX)) return customLevelResolver?.(id);
   return getLevelById(id) ?? resolveModeLevel(id);
 }

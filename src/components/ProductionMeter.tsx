@@ -8,6 +8,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Activity, AlertTriangle, Fuel, Gauge, Hourglass } from 'lucide-react-native';
 import { colors, iconSizes, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { formatFuel, formatPercent, formatRate } from '@/utils/format';
+import { useT } from '@/i18n';
 
 interface ProductionMeterProps {
   tonsPerHour: number;
@@ -22,31 +23,32 @@ const QUEUE_WARN_SECONDS = 10;
 const UTIL_WARN = 0.6;
 
 export function ProductionMeter({ tonsPerHour, fuelUsed, truckUtilization, avgQueueSeconds }: ProductionMeterProps) {
+  const { t } = useT();
   const queueWarn = avgQueueSeconds >= QUEUE_WARN_SECONDS;
   const utilWarn = tonsPerHour > 0 && truckUtilization < UTIL_WARN;
   return (
     <View style={[styles.card, shadows.soft]}>
-      <View style={styles.rateBlock} accessible accessibilityLabel={`Production ${formatRate(tonsPerHour)}`}>
+      <View style={styles.rateBlock} accessible accessibilityLabel={t('game.meter.productionA11y', { rate: formatRate(tonsPerHour) })}>
         <View style={styles.rateLabelRow}>
           <Activity size={iconSizes.xs} color={colors.primary} />
-          <Text style={styles.rateLabel}>PRODUCTION</Text>
+          <Text style={styles.rateLabel}>{t('game.meter.production')}</Text>
         </View>
         <Text style={styles.rate} numberOfLines={1} adjustsFontSizeToFit>
           {formatRate(tonsPerHour)}
         </Text>
       </View>
       <View style={styles.kpiRow}>
-        <Kpi icon={<Fuel size={iconSizes.xs} color={colors.info} />} value={formatFuel(fuelUsed)} label="Fuel" />
+        <Kpi icon={<Fuel size={iconSizes.xs} color={colors.info} />} value={formatFuel(fuelUsed)} label={t('game.meter.fuel')} />
         <Kpi
           icon={utilWarn ? <AlertTriangle size={iconSizes.xs} color={colors.warning} /> : <Gauge size={iconSizes.xs} color={colors.success} />}
           value={formatPercent(truckUtilization)}
-          label="Util."
+          label={t('game.meter.util')}
           warn={utilWarn}
         />
         <Kpi
           icon={queueWarn ? <AlertTriangle size={iconSizes.xs} color={colors.warning} /> : <Hourglass size={iconSizes.xs} color={colors.textMuted} />}
           value={`${Math.round(avgQueueSeconds)}s`}
-          label="Queue"
+          label={t('game.meter.queue')}
           warn={queueWarn}
         />
       </View>
@@ -55,8 +57,9 @@ export function ProductionMeter({ tonsPerHour, fuelUsed, truckUtilization, avgQu
 }
 
 function Kpi({ icon, value, label, warn }: { icon: ReactNode; value: string; label: string; warn?: boolean }) {
+  const { t } = useT();
   return (
-    <View style={[styles.kpi, warn && styles.kpiWarn]} accessible accessibilityLabel={`${label} ${value}${warn ? ', needs attention' : ''}`}>
+    <View style={[styles.kpi, warn && styles.kpiWarn]} accessible accessibilityLabel={warn ? t('game.meter.kpiWarnA11y', { label, value }) : t('game.meter.kpiA11y', { label, value })}>
       <View style={styles.kpiTop}>
         {icon}
         <Text style={styles.kpiLabel}>{label}</Text>

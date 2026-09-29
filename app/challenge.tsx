@@ -19,6 +19,8 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { StarRating } from '@/components/StarRating';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
+import { useT } from '@/i18n';
+import { levelDisplayName } from '@/game/levels/levelText';
 
 const formatTime = (seconds: number) => {
   const s = Math.round(seconds);
@@ -27,6 +29,7 @@ const formatTime = (seconds: number) => {
 
 export default function ChallengeScreen() {
   const router = useRouter();
+  const { t } = useT();
   const nickname = useChallengeStore((s) => s.nickname);
   const setNickname = useChallengeStore((s) => s.setNickname);
   const setActive = useChallengeStore((s) => s.setActive);
@@ -57,32 +60,29 @@ export default function ChallengeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Friend Challenge" subtitle="Beat a friend's run — no internet needed" />
+      <ScreenHeader title={t('shell.challenge.title')} subtitle={t('shell.challenge.subtitle')} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={[styles.card, shadows.soft]}>
-          <Text style={styles.label}>YOUR NICKNAME</Text>
+          <Text style={styles.label}>{t('shell.challenge.nickname')}</Text>
           <TextInput
             value={nickname}
             onChangeText={setNickname}
-            placeholder="Shown to friends, e.g. Pit Boss"
+            placeholder={t('shell.challenge.nicknamePlaceholder')}
             placeholderTextColor={colors.textMuted}
             maxLength={20}
             autoCorrect={false}
-            accessibilityLabel="Your nickname"
+            accessibilityLabel={t('shell.challenge.nicknameA11y')}
             style={styles.input}
           />
-          <Text style={styles.hint}>
-            Share a challenge from any level you have finished: open the level and tap SHARE CHALLENGE. Only your
-            nickname and moves are included.
-          </Text>
+          <Text style={styles.hint}>{t('shell.challenge.shareHint')}</Text>
         </View>
 
         <View style={[styles.card, shadows.soft]}>
-          <Text style={styles.label}>PASTE A CHALLENGE CODE</Text>
+          <Text style={styles.label}>{t('shell.challenge.paste')}</Text>
           <TextInput
             value={code}
-            onChangeText={(t) => {
-              setCode(t);
+            onChangeText={(text) => {
+              setCode(text);
               setError(null);
             }}
             placeholder="MPG1.…"
@@ -90,7 +90,7 @@ export default function ChallengeScreen() {
             multiline
             autoCorrect={false}
             autoCapitalize="none"
-            accessibilityLabel="Challenge code"
+            accessibilityLabel={t('shell.challenge.codeA11y')}
             style={[styles.input, styles.codeInput]}
           />
           {error ? (
@@ -99,7 +99,7 @@ export default function ChallengeScreen() {
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
-          <PrimaryButton label="CHECK CODE" disabled={code.trim().length === 0} onPress={check} />
+          <PrimaryButton label={t('shell.challenge.check')} disabled={code.trim().length === 0} onPress={check} />
         </View>
 
         {loaded && level ? (
@@ -107,30 +107,28 @@ export default function ChallengeScreen() {
             <View style={styles.resultHead}>
               <Swords size={iconSizes.md} color={colors.primary} />
               <View style={styles.flex}>
-                <Text style={styles.eyebrow}>{loaded.challenge.nickname.toUpperCase()} CHALLENGES YOU</Text>
-                <Text style={styles.title}>
-                  Level {level.id} · {level.name}
-                </Text>
+                <Text style={styles.eyebrow}>{t('shell.challenge.challengesYou', { name: loaded.challenge.nickname.toUpperCase() })}</Text>
+                <Text style={styles.title}>{t('shell.challenge.level', { id: level.id, name: levelDisplayName(level) })}</Text>
               </View>
             </View>
             {loaded.result.success ? (
               <>
                 <StarRating count={loaded.result.stars} size={iconSizes.md} />
-                <Text style={styles.score}>{formatNumber(loaded.result.score)} pts</Text>
+                <Text style={styles.score}>{t('shell.challenge.points', { score: formatNumber(loaded.result.score) })}</Text>
                 <Text style={styles.body}>
-                  {Math.round(loaded.result.tons)} / {loaded.result.targetTons} t in {formatTime(loaded.result.seconds)}
-                  {myBest > 0 ? ` · your best: ${formatNumber(myBest)} pts` : ''}
+                  {t('shell.challenge.summary', { tons: Math.round(loaded.result.tons), target: loaded.result.targetTons, time: formatTime(loaded.result.seconds) })}
+                  {myBest > 0 ? t('shell.challenge.yourBest', { score: formatNumber(myBest) }) : ''}
                 </Text>
               </>
             ) : (
-              <Text style={styles.body}>This run did not complete the mission — an easy one to beat.</Text>
+              <Text style={styles.body}>{t('shell.challenge.failed')}</Text>
             )}
             <View style={styles.verified}>
               <ShieldCheck size={iconSizes.sm} color={colors.success} />
-              <Text style={styles.verifiedText}>Score verified by replaying the run on this phone.</Text>
+              <Text style={styles.verifiedText}>{t('shell.challenge.verified')}</Text>
             </View>
             <PrimaryButton
-              label="WATCH THEIR RUN"
+              label={t('shell.challenge.watch')}
               variant="outline"
               icon={<Ghost size={iconSizes.sm} color={colors.primary} />}
               onPress={() => {
@@ -139,7 +137,7 @@ export default function ChallengeScreen() {
               }}
             />
             <PrimaryButton
-              label={playable ? 'PLAY TO BEAT IT' : `FINISH LEVEL ${levelNumber - 1} TO UNLOCK`}
+              label={playable ? t('shell.challenge.play') : t('shell.challenge.finishToUnlock', { level: levelNumber - 1 })}
               disabled={!playable}
               icon={playable ? <Play size={iconSizes.sm} color={colors.textOnDark} /> : undefined}
               onPress={() => router.push(`/level/${level.id}` as never)}

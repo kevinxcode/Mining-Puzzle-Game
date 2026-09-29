@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { colors, iconSizes, spacing, typography } from '@/theme/tokens';
 import { IconButton } from './IconButton';
+import { useT } from '@/i18n';
 
 interface ScreenHeaderProps {
   title: string;
@@ -19,12 +20,13 @@ interface ScreenHeaderProps {
 
 export function ScreenHeader({ title, subtitle, right, onBack, tone = 'light' }: ScreenHeaderProps) {
   const router = useRouter();
+  const { t } = useT();
   const textColor = tone === 'dark' ? colors.textOnDark : colors.text;
   return (
     <View style={styles.header}>
       <IconButton
         icon={<ChevronLeft size={iconSizes.md} color={colors.textOnDark} />}
-        accessibilityLabel="Back"
+        accessibilityLabel={t('shell.common.back')}
         onPress={onBack ?? (() => router.back())}
       />
       <View style={styles.titleBlock}>

@@ -17,6 +17,7 @@ import {
 } from './routeEngine';
 import { registerDump } from './productionEngine';
 import { pushFeed } from './feed';
+import { t, tx } from '@/i18n/core';
 import { fuelStationOpen } from './eventEngine';
 
 /** Per-truck flag for the current queue episode (module-scoped per runtime object). */
@@ -109,7 +110,7 @@ function updateTruck(
         } else {
           dispatchToLoader(state, level, truck);
         }
-        pushFeed(state, `${truck.spec.name} refueled — back to work.`);
+        pushFeed(state, t('game.feed.refueled', { truck: tx(truck.spec.name) }));
       }
       break;
     }
@@ -123,7 +124,7 @@ function accumulateQueue(state: SimState, truck: TruckRuntime, dt: number): void
   const onRoad = truck.pathIndex < truck.nodePath.length - 1;
   if (onRoad && truck.queueTime >= balance.jamQueueSeconds && !jamFlagged.has(truck)) {
     state.stats.jamCount += 1;
-    pushFeed(state, `${truck.spec.name} is stuck in a traffic jam.`);
+    pushFeed(state, t('game.feed.jam', { truck: tx(truck.spec.name) }));
     jamFlagged.add(truck);
   }
 }
@@ -157,7 +158,7 @@ function advanceAlongPath(
       truck.nodePath = reroute;
       truck.pathIndex = 0;
       truck.segmentProgress = 0;
-      pushFeed(state, `${truck.spec.name} is rerouting.`);
+      pushFeed(state, t('game.feed.rerouting', { truck: tx(truck.spec.name) }));
       return 'moving';
     }
     return 'blocked';
@@ -288,7 +289,7 @@ function completeDumpAndContinue(
   const need = roundTripFuelNeed(level, truck) * balance.refuelSafetyFactor;
   if (fuelNode && truck.fuel < need) {
     dispatchToFuel(state, level, truck);
-    pushFeed(state, `${truck.spec.name} is low on fuel — heading to refuel.`);
+    pushFeed(state, t('game.feed.lowFuel', { truck: tx(truck.spec.name) }));
     return;
   }
   dispatchToLoader(state, level, truck);
@@ -326,7 +327,7 @@ function triggerBreakdown(state: SimState, truck: TruckRuntime): void {
   truck.state = 'breakdown';
   truck.breakdownUntil = state.elapsed + recovery;
   state.stats.breakdowns += 1;
-  pushFeed(state, `${truck.spec.name} ran out of fuel — workshop tow dispatched.`);
+  pushFeed(state, t('game.feed.outOfFuel', { truck: tx(truck.spec.name) }));
 }
 
 function recoverTruck(state: SimState, level: LevelConfig, truck: TruckRuntime): void {
@@ -344,7 +345,7 @@ function recoverTruck(state: SimState, level: LevelConfig, truck: TruckRuntime):
   } else {
     dispatchToLoader(state, level, truck);
   }
-  pushFeed(state, `${truck.spec.name} is repaired — back to work.`);
+  pushFeed(state, t('game.feed.repaired', { truck: tx(truck.spec.name) }));
 }
 
 /** Resume a queued truck once its way is clear (narrow road or reopened road). */

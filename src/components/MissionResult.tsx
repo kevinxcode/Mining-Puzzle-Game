@@ -27,6 +27,7 @@ import { animation, colors, iconSizes, layout, radius, shadows, spacing, typogra
 import { formatClock, formatFuel, formatTons } from '@/utils/format';
 import { PrimaryButton } from './PrimaryButton';
 import { StarRating } from './StarRating';
+import { useT } from '@/i18n';
 
 interface MissionResultProps {
   visible: boolean;
@@ -40,9 +41,13 @@ interface MissionResultProps {
   maxQueueSeconds: number;
   xpGain: number;
   coinsGain: number;
+  /** Replaces the rewards line (e.g. custom levels never pay rewards). */
+  rewardNote?: string;
   issue?: string;
   tip?: string;
   onNext: () => void;
+  /** Overrides the NEXT LEVEL label (e.g. custom levels go back to the editor). */
+  nextLabel?: string;
   onReplay: () => void;
   /** Opens the system share sheet with a result card. */
   onShare?: () => void;
@@ -62,14 +67,17 @@ export function MissionResult({
   maxQueueSeconds,
   xpGain,
   coinsGain,
+  rewardNote,
   issue,
   tip,
   onNext,
+  nextLabel,
   onReplay,
   onShare,
   onHome,
   onChangeStrategy,
 }: MissionResultProps) {
+  const { t } = useT();
   const statusColor = success ? colors.success : colors.warning;
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={success ? onHome : onReplay}>
@@ -86,9 +94,9 @@ export function MissionResult({
                 )}
               </View>
               <Text style={[styles.title, { color: statusColor }]} accessibilityRole="header">
-                {success ? 'MISSION COMPLETE' : 'TARGET MISSED'}
+                {success ? t('game.result.complete') : t('game.result.missed')}
               </Text>
-              {!success ? <Text style={styles.subtitle}>So close — a small change can make the difference.</Text> : null}
+              {!success ? <Text style={styles.subtitle}>{t('game.result.soClose')}</Text> : null}
 
               {success ? (
                 <Animated.View entering={ZoomIn.delay(animation.normal).springify()}>
@@ -97,19 +105,21 @@ export function MissionResult({
               ) : null}
 
               <View style={styles.grid}>
-                <Tile icon={<Target size={iconSizes.xs} color={colors.primary} />} label="Production" value={`${formatTons(tonsMoved)} / ${formatTons(targetTons)}`} wide />
-                <Tile icon={<Clock size={iconSizes.xs} color={colors.info} />} label="Time" value={formatClock(elapsedSeconds)} />
-                <Tile icon={<Gauge size={iconSizes.xs} color={colors.success} />} label="Efficiency" value={`${efficiency}%`} />
-                <Tile icon={<Fuel size={iconSizes.xs} color={colors.info} />} label="Fuel" value={formatFuel(fuelUsed)} />
-                <Tile icon={<Hourglass size={iconSizes.xs} color={colors.warning} />} label="Max queue" value={`${Math.round(maxQueueSeconds)}s`} />
+                <Tile icon={<Target size={iconSizes.xs} color={colors.primary} />} label={t('game.result.production')} value={`${formatTons(tonsMoved)} / ${formatTons(targetTons)}`} wide />
+                <Tile icon={<Clock size={iconSizes.xs} color={colors.info} />} label={t('game.result.time')} value={formatClock(elapsedSeconds)} />
+                <Tile icon={<Gauge size={iconSizes.xs} color={colors.success} />} label={t('game.result.efficiency')} value={`${efficiency}%`} />
+                <Tile icon={<Fuel size={iconSizes.xs} color={colors.info} />} label={t('game.result.fuel')} value={formatFuel(fuelUsed)} />
+                <Tile icon={<Hourglass size={iconSizes.xs} color={colors.warning} />} label={t('game.result.maxQueue')} value={`${Math.round(maxQueueSeconds)}s`} />
               </View>
 
               {success ? (
-                xpGain > 0 || coinsGain > 0 ? (
+                rewardNote ? (
+                  <Text style={styles.subtitle}>{rewardNote}</Text>
+                ) : xpGain > 0 || coinsGain > 0 ? (
                   <Animated.View entering={FadeIn.delay(animation.starPop)} style={styles.rewards}>
                     <View style={styles.rewardChip}>
                       <Sparkles size={iconSizes.sm} color={colors.primary} />
-                      <Text style={styles.rewardText}>+{xpGain} XP</Text>
+                      <Text style={styles.rewardText}>{t('game.result.xp', { xp: xpGain })}</Text>
                     </View>
                     <View style={styles.rewardChip}>
                       <Coins size={iconSizes.sm} color={colors.primary} />
@@ -117,11 +127,11 @@ export function MissionResult({
                     </View>
                   </Animated.View>
                 ) : (
-                  <Text style={styles.subtitle}>Rewards already collected — earn more stars for a bonus.</Text>
+                  <Text style={styles.subtitle}>{t('game.result.alreadyCollected')}</Text>
                 )
               ) : (
                 <View style={styles.failureBlock}>
-                  <Text style={styles.issueLabel}>MAIN ISSUE</Text>
+                  <Text style={styles.issueLabel}>{t('game.result.mainIssue')}</Text>
                   <Text style={styles.issue}>{issue}</Text>
                   <View style={styles.tipRow}>
                     <Lightbulb size={iconSizes.sm} color={colors.warning} />
@@ -132,7 +142,7 @@ export function MissionResult({
 
               {onShare ? (
                 <PrimaryButton
-                  label="SHARE RESULT"
+                  label={t('game.result.share')}
                   variant="ghost"
                   icon={<Share2 size={iconSizes.sm} color={colors.textOnDark} />}
                   onPress={onShare}
@@ -141,18 +151,18 @@ export function MissionResult({
               ) : null}
               {success ? (
                 <View style={styles.buttons}>
-                  <PrimaryButton label="NEXT LEVEL" icon={<SkipForward size={iconSizes.sm} color={colors.textOnDark} />} onPress={onNext} />
+                  <PrimaryButton label={nextLabel ?? t('game.result.next')} icon={<SkipForward size={iconSizes.sm} color={colors.textOnDark} />} onPress={onNext} />
                   <View style={styles.row}>
-                    <PrimaryButton label="REPLAY" variant="outline" icon={<RotateCcw size={iconSizes.sm} color={colors.text} />} onPress={onReplay} style={styles.halfButton} />
-                    <PrimaryButton label="HOME" variant="ghost" icon={<Home size={iconSizes.sm} color={colors.textOnDark} />} onPress={onHome} style={styles.halfButton} />
+                    <PrimaryButton label={t('game.result.replay')} variant="outline" icon={<RotateCcw size={iconSizes.sm} color={colors.text} />} onPress={onReplay} style={styles.halfButton} />
+                    <PrimaryButton label={t('game.result.home')} variant="ghost" icon={<Home size={iconSizes.sm} color={colors.textOnDark} />} onPress={onHome} style={styles.halfButton} />
                   </View>
                 </View>
               ) : (
                 <View style={styles.buttons}>
-                  <PrimaryButton label="RETRY" icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />} onPress={onReplay} />
+                  <PrimaryButton label={t('game.result.retry')} icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />} onPress={onReplay} />
                   <View style={styles.row}>
-                    <PrimaryButton label="STRATEGY" accessibilityLabel="Change strategy" variant="secondary" onPress={onChangeStrategy} style={styles.halfButton} />
-                    <PrimaryButton label="HOME" variant="ghost" icon={<Home size={iconSizes.sm} color={colors.textOnDark} />} onPress={onHome} style={styles.halfButton} />
+                    <PrimaryButton label={t('game.result.strategy')} accessibilityLabel={t('game.result.strategyA11y')} variant="secondary" onPress={onChangeStrategy} style={styles.halfButton} />
+                    <PrimaryButton label={t('game.result.home')} variant="ghost" icon={<Home size={iconSizes.sm} color={colors.textOnDark} />} onPress={onHome} style={styles.halfButton} />
                   </View>
                 </View>
               )}

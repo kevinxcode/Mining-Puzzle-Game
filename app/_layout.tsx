@@ -9,6 +9,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { colors } from '@/theme/tokens';
 import { CrashScreen } from '@/components/CrashScreen';
+// Registers custom (level editor) levels with resolveLevel.
+import '@/state/customLevelStore';
 
 /** Routes drawn over dark artwork need light status bar icons. */
 const LIGHT_STATUS_BAR_ROUTES = new Set(['/']);
@@ -42,6 +44,8 @@ export default function RootLayout() {
           <Stack.Screen name="equipment" />
           <Stack.Screen name="hq" />
           <Stack.Screen name="challenge" />
+          <Stack.Screen name="editor/index" />
+          <Stack.Screen name="editor/[id]" />
           <Stack.Screen name="statistics" />
           <Stack.Screen name="achievements" />
           <Stack.Screen name="settings" />

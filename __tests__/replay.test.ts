@@ -76,3 +76,19 @@ describe('ghost playback loop', () => {
     jest.useRealTimers();
   });
 });
+
+describe('frame loop', () => {
+  it('stops notifying once the mission is over', () => {
+    jest.useFakeTimers();
+    const level = getLevelByNumber(1)!;
+    const ctrl = new SimController(level);
+    ctrl.start();
+    jest.advanceTimersByTime(600_000);
+    expect(['success', 'failed']).toContain(ctrl.state.status);
+    const v = ctrl.version;
+    jest.advanceTimersByTime(5_000);
+    expect(ctrl.version).toBe(v);
+    ctrl.dispose();
+    jest.useRealTimers();
+  });
+});

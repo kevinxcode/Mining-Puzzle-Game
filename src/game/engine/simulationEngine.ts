@@ -16,6 +16,7 @@ import type {
 import { UPGRADES, upgradeStatMultiplier } from '../config/equipment';
 import { activeRainUntil, processEvents } from './eventEngine';
 import { pushFeed } from './feed';
+import { t, tx } from '@/i18n/core';
 import { updateExcavators } from './excavatorEngine';
 import { dispatchToLoader, dispatchToFuel, updateTrucks } from './truckEngine';
 import { shortestPath } from './routeEngine';
@@ -148,7 +149,7 @@ function finish(state: SimState, result: OutcomeResult): void {
   state.status = result.success ? 'success' : 'failed';
   pushFeed(
     state,
-    result.success ? 'Production target reached — shift complete!' : 'Target missed — shift ended.',
+    result.success ? t('game.feed.shiftComplete') : t('game.feed.shiftFailed'),
   );
 }
 
@@ -236,7 +237,7 @@ export function startOperation(state: SimState, baseLevel: LevelConfig): void {
     if (truck.state !== 'idle') continue;
     dispatchToLoader(state, level, truck);
   }
-  pushFeed(state, 'Operation started.');
+  pushFeed(state, t('game.feed.started'));
 }
 
 export function setPaused(state: SimState, paused: boolean): void {
@@ -275,7 +276,7 @@ export function assignTruck(
   ) {
     dispatchToLoader(state, level, truck);
   }
-  pushFeed(state, `${truck.spec.name} reassigned to ${excavator.spec.name}.`);
+  pushFeed(state, t('game.feed.reassigned', { truck: tx(truck.spec.name), excavator: tx(excavator.spec.name) }));
   return true;
 }
 
@@ -309,7 +310,7 @@ export function setTruckRoute(
       truck.state = 'hauling';
     }
   }
-  pushFeed(state, `${truck.spec.name} rerouted to ${route.name}.`);
+  pushFeed(state, t('game.feed.rerouted', { truck: tx(truck.spec.name), route: tx(route.name) }));
   return true;
 }
 
@@ -323,7 +324,7 @@ export function sendToFuel(state: SimState, baseLevel: LevelConfig, truckId: str
   if (truck.state === 'refueling' || truck.state === 'breakdown') return false;
 
   dispatchToFuel(state, level, truck);
-  pushFeed(state, `${truck.spec.name} is heading to the fuel station.`);
+  pushFeed(state, t('game.feed.toFuel', { truck: tx(truck.spec.name) }));
   return true;
 }
 

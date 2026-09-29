@@ -39,8 +39,8 @@ Effort: **S** = days, **M** = 1–2 weeks, **L** = 3+ weeks (small team).
 | 8 | ~~Ghost replay of your best run~~ | M | **Done** — command log of the best-scoring run, "Watch best run" on the level screen |
 | 9 | ~~Cosmetic truck liveries~~ | M | **Done** — 6 paint schemes in Equipment (coins or 30 three-star levels); site themes later |
 | 10 | ~~Optional rewarded ad~~ | M | **Dropped** — ads need a network; the app stays offline |
-| 11 | 2.5D / isometric map view | L | Closer to the Clash of Clans look the user asked about |
-| 12 | Level editor / user levels, season pass | L | Deferred until there is a player base |
+| 11 | ~~2.5D / isometric map view~~ | L | **Done** — raised diamond site (default) with a top-down toggle; one projection drives terrain, units and drag hit-testing |
+| 12 | ~~Level editor~~ | L | **Done** — grid editor (pits, stockpiles, junctions, fuel, roads: narrow/mud/one-way), auto haul routes, live validation, play test, offline share codes; no XP/coins. Season pass dropped (offline) |
 
 ## Planned — company training (B2B)
 
@@ -52,11 +52,10 @@ Effort: **S** = days, **M** = 1–2 weeks, **L** = 3+ weeks (small team).
 | 16 | ~~Trainee identity + certificate expiry / retake~~ | M | **Done** — employee ID, site, company on certificate + CSV; 365-day validity, Renew induction |
 | 17 | ~~Content outside the app (JSON content packs)~~ | M | **Done** — import/export/reset, strict validation, version-based renewal; see `docs/CONTENT_PACK.md` |
 | 18 | White-label company build (branding, custom levels, no ads) | M | Main revenue path identified in market research |
-| 19 | Bahasa Indonesia | M | Postponed by request; needed before a pilot at an Indonesian site |
+| 19 | ~~Bahasa Indonesia~~ | M | **Done** — full UI, level text, engine messages, induction pack, certificate and CSV; switch in Settings (English default) |
 | 20 | Pilot at one site with the HSE team | — | Measure completion, quiz scores, time-to-induct vs classroom |
 
 ## Decisions needed
 
 - ~~Backend~~ — **decided 2026-09-28: no online features.** The app stays fully offline; HSE data moves only through user-initiated CSV/PDF exports.
 - **Monetisation** for the consumer build: cosmetics (coin liveries exist) or premium only? Ads are out (offline).
-- **Isometric map** (#11): worth the effort now or after launch?

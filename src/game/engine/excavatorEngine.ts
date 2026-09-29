@@ -8,6 +8,7 @@ import type { ExcavatorRuntime, LevelConfig, SimState } from '@/types/game';
 import { balance } from '../config/balance';
 import { dispatchToFuel, roundTripFuelNeed, startHaul } from './truckEngine';
 import { pushFeed } from './feed';
+import { t, tx } from '@/i18n/core';
 
 export function updateExcavators(state: SimState, level: LevelConfig, dt: number): void {
   for (const excavator of state.excavators) {
@@ -51,10 +52,10 @@ function updateExcavator(
       const need = roundTripFuelNeed(level, truck) * balance.refuelSafetyFactor;
       if (fuelNode && truck.fuel < need) {
         dispatchToFuel(state, level, truck);
-        pushFeed(state, `${truck.spec.name} tops up fuel before hauling.`);
+        pushFeed(state, t('game.feed.topUp', { truck: tx(truck.spec.name) }));
       } else {
         startHaul(state, level, truck);
-        pushFeed(state, `${truck.spec.name} loaded — hauling to the stockpile.`);
+        pushFeed(state, t('game.feed.loaded', { truck: tx(truck.spec.name) }));
       }
     }
     return;

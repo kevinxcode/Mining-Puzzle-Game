@@ -11,8 +11,10 @@ import { AlertTriangle, RotateCcw, Share2 } from 'lucide-react-native';
 import { colors, iconSizes, layout, radius, spacing, typography } from '@/theme/tokens';
 import { crashReportText, recordCrash } from '@/services/crashLog';
 import { PrimaryButton } from './PrimaryButton';
+import { useT } from '@/i18n';
 
 export function CrashScreen({ error, route, retry }: { error: Error; route: string; retry: () => void }) {
+  const { t } = useT();
   useEffect(() => {
     void recordCrash(error, route);
   }, [error, route]);
@@ -29,24 +31,21 @@ export function CrashScreen({ error, route, retry }: { error: Error; route: stri
       <View style={styles.card}>
         <AlertTriangle size={iconSizes.lg} color={colors.warning} />
         <Text style={styles.title} accessibilityRole="header">
-          Something went wrong
+          {t('shell.crash.title')}
         </Text>
-        <Text style={styles.body}>
-          Your progress is saved. Try again — if it keeps happening, share the error report with the person who gave
-          you the app.
-        </Text>
+        <Text style={styles.body}>{t('shell.crash.body')}</Text>
         <PrimaryButton
-          label="TRY AGAIN"
+          label={t('shell.crash.retry')}
           icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />}
           onPress={retry}
         />
         <PrimaryButton
-          label="SHARE ERROR REPORT"
+          label={t('shell.crash.share')}
           variant="outline"
           icon={<Share2 size={iconSizes.sm} color={colors.primary} />}
           onPress={share}
         />
-        <Text style={styles.note}>The report contains only the error, screen and app version.</Text>
+        <Text style={styles.note}>{t('shell.crash.note')}</Text>
       </View>
     </View>
   );

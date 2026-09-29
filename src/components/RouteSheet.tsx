@@ -9,6 +9,7 @@ import { colors, radius, shadows, spacing, typography } from '@/theme/tokens';
 import type { LevelConfig, NamedRoute, TruckRuntime } from '@/types/game';
 import { hapticSelection } from '@/services/haptics';
 import { playSfx } from '@/services/audio';
+import { t, useT } from '@/i18n';
 
 interface RouteSheetProps {
   visible: boolean;
@@ -34,14 +35,15 @@ function routeHints(level: LevelConfig, route: NamedRoute): string {
     mud = mud || Boolean(road.mud);
     maxSpeed = Math.max(maxSpeed, road.speedLimit);
   }
-  lengths.push(`${Math.round(total)} units`);
-  if (maxSpeed > 1.05) lengths.push('fast');
-  if (narrow) lengths.push('narrow — one truck at a time');
-  if (mud) lengths.push('mud — slow + extra fuel');
+  lengths.push(t('game.route.units', { count: Math.round(total) }));
+  if (maxSpeed > 1.05) lengths.push(t('game.route.fast'));
+  if (narrow) lengths.push(t('game.route.narrow'));
+  if (mud) lengths.push(t('game.route.mud'));
   return lengths.join(' · ');
 }
 
 export function RouteSheet({ visible, onClose, level, truck, onChoose }: RouteSheetProps) {
+  const { tx } = useT();
   const excavator = truck ? level.excavators.find((e) => e.id === truck.assignedExcavatorId) : null;
   const validRoutes = excavator
     ? level.map.routes.filter((r) => r.nodePath[0] === excavator.nodeId)
@@ -54,20 +56,20 @@ export function RouteSheet({ visible, onClose, level, truck, onChoose }: RouteSh
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close route sheet" />
+      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel={t('game.route.closeSheet')} />
       <View style={[styles.sheet, shadows.raised]}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Choose Route</Text>
+            <Text style={styles.title}>{t('game.route.title')}</Text>
             {truck ? (
               <Text style={styles.subtitle}>
-                {truck.spec.name} · {excavator?.name ?? '—'}
+                {tx(truck.spec.name)} · {excavator ? tx(excavator.name) : '—'}
               </Text>
             ) : null}
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Close"
+            accessibilityLabel={t('game.common.close')}
             onPress={close}
             style={styles.closeButton}
           >
@@ -82,7 +84,7 @@ export function RouteSheet({ visible, onClose, level, truck, onChoose }: RouteSh
               <Pressable
                 key={route.id}
                 accessibilityRole="button"
-                accessibilityLabel={`Route ${route.name}${active ? ' (current)' : ''}`}
+                accessibilityLabel={active ? t('game.route.rowCurrentA11y', { name: tx(route.name) }) : t('game.route.rowA11y', { name: tx(route.name) })}
                 onPress={() => {
                   playSfx('tap');
                   hapticSelection();
@@ -96,7 +98,7 @@ export function RouteSheet({ visible, onClose, level, truck, onChoose }: RouteSh
                 ]}
               >
                 <View style={styles.rowInfo}>
-                  <Text style={styles.rowTitle}>{route.name}</Text>
+                  <Text style={styles.rowTitle}>{tx(route.name)}</Text>
                   <Text style={styles.rowHints}>{routeHints(level, route)}</Text>
                 </View>
                 {active ? <Check size={18} color={colors.primary} /> : null}
@@ -104,7 +106,7 @@ export function RouteSheet({ visible, onClose, level, truck, onChoose }: RouteSh
             );
           })}
           {validRoutes.length === 0 ? (
-            <Text style={styles.empty}>No routes available for this excavator.</Text>
+            <Text style={styles.empty}>{t('game.route.empty')}</Text>
           ) : null}
         </ScrollView>
       </View>

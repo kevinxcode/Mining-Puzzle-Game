@@ -5,6 +5,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { formatNumber } from '@/utils/format';
+import { useT } from '@/i18n';
 
 interface XPBarProps {
   level: number;
@@ -16,12 +17,13 @@ interface XPBarProps {
 }
 
 export function XPBar({ level, xp, currentLevelXp, nextLevelXp }: XPBarProps) {
+  const { t } = useT();
   const span = Math.max(1, nextLevelXp - currentLevelXp);
   const progress = Math.max(0, Math.min(1, (xp - currentLevelXp) / span));
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <Text style={styles.level}>LV {level}</Text>
+        <Text style={styles.level}>{t('shell.xp.level', { level })}</Text>
         <Text style={styles.xp}>
           {formatNumber(xp - currentLevelXp)} / {formatNumber(span)} XP
         </Text>

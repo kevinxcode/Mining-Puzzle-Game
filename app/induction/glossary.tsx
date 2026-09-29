@@ -10,38 +10,40 @@ import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, ty
 import { useActivePack } from '@/state/contentStore';
 import { FadeInView } from '@/components/FadeInView';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useT } from '@/i18n';
 
 export default function GlossaryScreen() {
+  const { t } = useT();
   const GLOSSARY = useActivePack().glossary;
   const [query, setQuery] = useState('');
   const terms = useMemo(() => {
     const q = query.trim().toLowerCase();
     return [...GLOSSARY]
       .sort((a, b) => a.term.localeCompare(b.term))
-      .filter((t) => !q || t.term.toLowerCase().includes(q) || t.definition.toLowerCase().includes(q));
-  }, [query]);
+      .filter((g) => !q || g.term.toLowerCase().includes(q) || g.definition.toLowerCase().includes(q));
+  }, [query, GLOSSARY]);
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScreenHeader title="Glossary" subtitle={`${GLOSSARY.length} site terms`} />
+      <ScreenHeader title={t('induction.glossary.title')} subtitle={t('induction.glossary.count', { count: GLOSSARY.length })} />
       <View style={styles.searchWrap}>
         <Search size={iconSizes.sm} color={colors.textMuted} />
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search terms"
+          placeholder={t('induction.glossary.search')}
           placeholderTextColor={colors.textMuted}
           style={styles.search}
-          accessibilityLabel="Search glossary"
+          accessibilityLabel={t('induction.glossary.searchA11y')}
           autoCorrect={false}
         />
       </View>
       <FlatList
         data={terms}
-        keyExtractor={(t) => t.term}
+        keyExtractor={(g) => g.term}
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
-        ListEmptyComponent={<Text style={styles.empty}>No matching terms.</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>{t('induction.glossary.empty')}</Text>}
         renderItem={({ item, index }) => (
           <FadeInView index={index} style={[styles.item, shadows.soft]}>
             <Text style={styles.term}>{item.term}</Text>

@@ -23,15 +23,17 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { playSfx } from '@/services/audio';
 import { hapticSelection, hapticSuccess, hapticWarning } from '@/services/haptics';
+import { useT, type MessageKey } from '@/i18n';
 
-const AREA_LABEL: Record<PrestartArea, string> = {
-  walkaround: 'WALK-AROUND',
-  cab: 'IN THE CAB',
-  safety: 'SAFETY EQUIPMENT',
+const AREA_LABEL: Record<PrestartArea, MessageKey> = {
+  walkaround: 'induction.prestart.area.walkaround',
+  cab: 'induction.prestart.area.cab',
+  safety: 'induction.prestart.area.safety',
 };
 
 export default function PrestartScreen() {
   const router = useRouter();
+  const { t, tn } = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const scenario = useActivePack().prestart.find((s) => s.id === String(id));
   const recordPrestartRun = useProgression((s) => s.recordPrestartRun);
@@ -43,7 +45,7 @@ export default function PrestartScreen() {
   if (!scenario) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ScreenHeader title="Inspection not found" />
+        <ScreenHeader title={t('induction.prestart.notFound')} />
       </SafeAreaView>
     );
   }
@@ -80,7 +82,10 @@ export default function PrestartScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Pre-start check" subtitle={`${scenario.title} · ${answered}/${scenario.items.length} checked`} />
+      <ScreenHeader
+        title={t('induction.prestart.title')}
+        subtitle={t('induction.prestart.checked', { title: scenario.title, answered, total: scenario.items.length })}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={[styles.brief, shadows.soft]}>
           <Truck size={iconSizes.md} color={colors.primary} />
@@ -92,7 +97,7 @@ export default function PrestartScreen() {
           if (items.length === 0) return null;
           return (
             <View key={area} style={styles.section}>
-              <Text style={styles.sectionLabel}>{AREA_LABEL[area]}</Text>
+              <Text style={styles.sectionLabel}>{t(AREA_LABEL[area])}</Text>
               {items.map((item) => {
                 const value = marks[item.id];
                 const right = submitted && value === item.defect;
@@ -101,12 +106,12 @@ export default function PrestartScreen() {
                   <View key={item.id} style={[styles.item, right && styles.itemRight, wrong && styles.itemWrong]}>
                     <Text style={styles.itemLabel}>
                       {item.label}
-                      {submitted && item.critical ? <Text style={styles.critical}>  CRITICAL</Text> : null}
+                      {submitted && item.critical ? <Text style={styles.critical}>  {t('induction.prestart.critical')}</Text> : null}
                     </Text>
                     <Text style={styles.observation}>{item.observation}</Text>
                     <View style={styles.choices}>
-                      <Choice label="OK" active={value === false} tone="ok" onPress={() => mark(item.id, false)} disabled={submitted} />
-                      <Choice label="DEFECT" active={value === true} tone="defect" onPress={() => mark(item.id, true)} disabled={submitted} />
+                      <Choice label={t('induction.prestart.ok')} active={value === false} tone="ok" onPress={() => mark(item.id, false)} disabled={submitted} />
+                      <Choice label={t('induction.prestart.defect')} active={value === true} tone="defect" onPress={() => mark(item.id, true)} disabled={submitted} />
                     </View>
                     {submitted ? (
                       <View style={styles.feedback}>
@@ -116,7 +121,7 @@ export default function PrestartScreen() {
                           <XCircle size={iconSizes.sm} color={colors.danger} />
                         )}
                         <Text style={styles.feedbackText}>
-                          {item.defect ? 'Defect. ' : 'OK. '}
+                          {item.defect ? t('induction.prestart.defectPrefix') : t('induction.prestart.okPrefix')}
                           {item.explanation}
                         </Text>
                       </View>
@@ -128,19 +133,19 @@ export default function PrestartScreen() {
           );
         })}
 
-        <Text style={styles.sectionLabel}>YOUR DECISION</Text>
+        <Text style={styles.sectionLabel}>{t('induction.prestart.decision')}</Text>
         <View style={styles.decisions}>
           <DecisionCard
             icon={<ClipboardCheck size={iconSizes.md} color={colors.success} />}
-            title="Safe to operate"
-            body="Sign the pre-start sheet and start the shift."
+            title={t('induction.prestart.operate')}
+            body={t('induction.prestart.operateBody')}
             active={decision === 'operate'}
             onPress={() => !submitted && setDecision('operate')}
           />
           <DecisionCard
             icon={<Ban size={iconSizes.md} color={colors.danger} />}
-            title="Tag out & report"
-            body="Do not operate. Tag the truck and call maintenance."
+            title={t('induction.prestart.tagOut')}
+            body={t('induction.prestart.tagOutBody')}
             active={decision === 'tag-out'}
             onPress={() => !submitted && setDecision('tag-out')}
           />
@@ -148,24 +153,28 @@ export default function PrestartScreen() {
 
         {submitted ? (
           <Animated.View entering={FadeInUp} style={[styles.result, result.passed ? styles.resultPass : styles.resultFail]}>
-            <Text style={styles.resultTitle}>{result.passed ? 'Inspection passed' : 'Not yet — review and retry'}</Text>
+            <Text style={styles.resultTitle}>{result.passed ? t('induction.prestart.passed') : t('induction.prestart.notYet')}</Text>
             <Text style={styles.resultBody}>
-              {result.correctItems}/{result.total} items correct
-              {result.missedCritical > 0 ? ` · ${result.missedCritical} critical defect${result.missedCritical === 1 ? '' : 's'} missed` : ''}
+              {t('induction.prestart.itemsCorrect', { correct: result.correctItems, total: result.total })}
+              {result.missedCritical > 0
+                ? tn('induction.prestart.missed_one', 'induction.prestart.missed_other', result.missedCritical)
+                : ''}
               {' · '}
-              The right call was {correctDecision(scenario) === 'tag-out' ? 'TAG OUT' : 'SAFE TO OPERATE'}.
+              {correctDecision(scenario) === 'tag-out'
+                ? t('induction.prestart.rightCallTagOut')
+                : t('induction.prestart.rightCallOperate')}
             </Text>
           </Animated.View>
         ) : null}
 
         {submitted ? (
           <>
-            <PrimaryButton label="TRY AGAIN" icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />} onPress={retry} />
-            <PrimaryButton label="BACK TO INDUCTION" variant="outline" onPress={() => router.back()} />
+            <PrimaryButton label={t('induction.tryAgain')} icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />} onPress={retry} />
+            <PrimaryButton label={t('induction.backToInduction')} variant="outline" onPress={() => router.back()} />
           </>
         ) : (
           <PrimaryButton
-            label={ready ? 'SUBMIT INSPECTION' : `CHECK ALL ITEMS (${answered}/${scenario.items.length})`}
+            label={ready ? t('induction.prestart.submit') : t('induction.prestart.checkAll', { answered, total: scenario.items.length })}
             onPress={submit}
             disabled={!ready}
           />

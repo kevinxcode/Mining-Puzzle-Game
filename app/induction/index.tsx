@@ -38,11 +38,14 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { buildCertificateHtml } from '@/game/induction/certificate';
 import { buildTrainingReportCsv } from '@/game/induction/report';
+import { useT } from '@/i18n';
 
 const bgInduction = require('../../assets/images/bg-induction.png');
 
 export default function InductionScreen() {
   const router = useRouter();
+  const { t, tx, language } = useT();
+  const fmtDate = (ts: number) => new Date(ts).toLocaleDateString(language === 'id' ? 'id-ID' : undefined);
   const induction = useProgression((s) => s.induction);
   const setTraineeName = useProgression((s) => s.setTraineeName);
   const setTraineeField = useProgression((s) => s.setTraineeField);
@@ -64,14 +67,17 @@ export default function InductionScreen() {
       const raw = await new File(picked.assets[0].uri).text();
       const result = importPack(raw);
       if (result.ok) {
-        Alert.alert('Content pack loaded', `${result.pack.name} v${result.pack.version}: ${result.pack.modules.length} modules, ${result.pack.prestart.length} pre-start checks.`);
+        Alert.alert(
+          t('induction.pack.loadedTitle'),
+          t('induction.pack.loadedBody', { name: result.pack.name, version: result.pack.version, modules: result.pack.modules.length, prestart: result.pack.prestart.length }),
+        );
       } else {
         const shown = result.errors.slice(0, 8);
-        if (result.errors.length > 8) shown.push(`…and ${result.errors.length - 8} more`);
-        Alert.alert('Pack not loaded', shown.join(String.fromCharCode(10)));
+        if (result.errors.length > 8) shown.push(t('induction.pack.more', { count: result.errors.length - 8 }));
+        Alert.alert(t('induction.pack.notLoaded'), shown.join(String.fromCharCode(10)));
       }
     } catch {
-      Alert.alert('Import failed', 'The file could not be read.');
+      Alert.alert(t('induction.pack.importFailed'), t('induction.pack.unreadable'));
     }
   };
 
@@ -81,16 +87,16 @@ export default function InductionScreen() {
       if (file.exists) file.delete();
       file.create();
       file.write(contentPackJson(pack));
-      await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Share content pack' });
+      await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: t('induction.pack.share') });
     } catch {
-      Alert.alert('Export failed', 'The content pack could not be created.');
+      Alert.alert(t('induction.exportFailed'), t('induction.pack.exportFailedBody'));
     }
   };
 
   const confirmResetPack = () =>
-    Alert.alert('Use built-in content', 'Remove the imported content pack and go back to the built-in induction?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Reset', style: 'destructive', onPress: resetPack },
+    Alert.alert(t('induction.pack.resetTitle'), t('induction.pack.resetBody'), [
+      { text: t('induction.cancel'), style: 'cancel' },
+      { text: t('induction.pack.reset'), style: 'destructive', onPress: resetPack },
     ]);
 
   const exportReport = async () => {
@@ -102,12 +108,12 @@ export default function InductionScreen() {
       file.create();
       file.write(buildTrainingReportCsv(induction, Date.now(), pack));
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: 'Share training report', UTI: 'public.comma-separated-values-text' });
+        await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: t('induction.report.share'), UTI: 'public.comma-separated-values-text' });
       } else {
-        Alert.alert('Report saved', `Saved to ${file.uri}`);
+        Alert.alert(t('induction.report.saved'), t('induction.savedTo', { uri: file.uri }));
       }
     } catch {
-      Alert.alert('Export failed', 'The training report could not be created. Please try again.');
+      Alert.alert(t('induction.exportFailed'), t('induction.report.failed'));
     } finally {
       setExporting(false);
     }
@@ -120,14 +126,14 @@ export default function InductionScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
-          dialogTitle: 'Share induction certificate',
+          dialogTitle: t('induction.cert.share'),
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert('Certificate saved', `Saved to ${uri}`);
+        Alert.alert(t('induction.cert.saved'), t('induction.savedTo', { uri }));
       }
     } catch {
-      Alert.alert('Export failed', 'The certificate could not be created. Please try again.');
+      Alert.alert(t('induction.exportFailed'), t('induction.cert.failed'));
     } finally {
       setExporting(false);
     }
@@ -137,22 +143,22 @@ export default function InductionScreen() {
   const expired = certStatus === 'expired' || certStatus === 'outdated';
   const expiresAt = certificateExpiresAt(induction);
   const confirmRenew = () =>
-    Alert.alert('Renew induction', 'This clears your passes so you can retake every module and practical check. Your details and history are kept.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Renew', onPress: renew },
+    Alert.alert(t('induction.renew.title'), t('induction.renew.body'), [
+      { text: t('induction.cancel'), style: 'cancel' },
+      { text: t('induction.renew.confirm'), onPress: renew },
     ]);
 
   return (
     <ImageBackground source={bgInduction} style={styles.bg} resizeMode="cover">
       <Scrim topOpacity={0.8} bottomOpacity={0.35} />
       <SafeAreaView style={styles.safe}>
-        <ScreenHeader title="Site Induction" subtitle="Training for new team members" tone="dark" />
+        <ScreenHeader title={t('induction.title')} subtitle={t('induction.subtitle')} tone="dark" />
         <ScrollView contentContainerStyle={styles.content}>
           <FadeInView style={[styles.progressCard, shadows.raised]}>
             <View style={styles.progressTop}>
-              <Text style={styles.progressLabel}>YOUR PROGRESS</Text>
+              <Text style={styles.progressLabel}>{t('induction.progress.label')}</Text>
               <Text style={styles.progressValue}>
-                {progress.completed} / {progress.total} modules
+                {t('induction.progress.value', { completed: progress.completed, total: progress.total })}
               </Text>
             </View>
             <View
@@ -164,8 +170,8 @@ export default function InductionScreen() {
             </View>
             <Text style={styles.progressHint}>
               {certified
-                ? 'Induction complete — your certificate is below.'
-                : 'Read the cards, pass the quick check, then practice in a real mission.'}
+                ? t('induction.progress.done')
+                : t('induction.progress.hint')}
             </Text>
           </FadeInView>
 
@@ -177,7 +183,7 @@ export default function InductionScreen() {
               <FadeInView key={module.id} index={i + 1}>
                 <PressableScale
                   accessibilityRole="button"
-                  accessibilityLabel={`Module ${module.number}: ${module.title}. ${done ? 'Completed' : 'Not completed'}`}
+                  accessibilityLabel={t('induction.module.a11y', { number: module.number, title: module.title, status: done ? t('induction.module.completed') : t('induction.module.notCompleted') })}
                   onPress={() => router.push(`/induction/${module.id}`)}
                   style={[styles.moduleCard, shadows.soft]}
                 >
@@ -189,14 +195,14 @@ export default function InductionScreen() {
                     )}
                   </View>
                   <View style={styles.moduleInfo}>
-                    <Text style={styles.moduleNumber}>MODULE {module.number}</Text>
+                    <Text style={styles.moduleNumber}>{t('induction.module.number', { number: module.number })}</Text>
                     <Text style={styles.moduleTitle}>{module.title}</Text>
                     <Text style={styles.moduleSummary} numberOfLines={2}>
                       {module.summary}
                     </Text>
                     {record ? (
                       <Text style={[styles.moduleScore, done ? styles.scoreDone : styles.scoreRetry]}>
-                        {done ? 'Passed' : 'Try again'} · best {record.bestScore}/{record.total}
+                        {t('induction.status.best', { status: done ? t('induction.status.passed') : t('induction.status.tryAgain'), best: record.bestScore, total: record.total })}
                       </Text>
                     ) : null}
                   </View>
@@ -206,7 +212,7 @@ export default function InductionScreen() {
             );
           })}
 
-          <Text style={styles.hazardHeading}>HAZARD SPOTTING</Text>
+          <Text style={styles.hazardHeading}>{t('induction.hazard.heading')}</Text>
           {HAZARD_SCENES.map((scene, i) => {
             const rec = induction.hazards[scene.id];
             const passedScene = Boolean(rec?.passedAt);
@@ -214,7 +220,7 @@ export default function InductionScreen() {
               <FadeInView key={scene.id} index={INDUCTION_MODULES.length + 1 + i}>
                 <PressableScale
                   accessibilityRole="button"
-                  accessibilityLabel={`Hazard spotting: ${scene.title}${passedScene ? ', cleared' : ''}`}
+                  accessibilityLabel={t(passedScene ? 'induction.hazard.a11yCleared' : 'induction.hazard.a11y', { title: tx(scene.title) })}
                   onPress={() => router.push(`/induction/hazard/${scene.id}`)}
                   style={[styles.glossaryCard, shadows.soft]}
                 >
@@ -224,9 +230,11 @@ export default function InductionScreen() {
                     <ShieldAlert size={iconSizes.md} color={colors.warning} />
                   )}
                   <View style={styles.moduleInfo}>
-                    <Text style={styles.moduleTitle}>{scene.title}</Text>
+                    <Text style={styles.moduleTitle}>{tx(scene.title)}</Text>
                     <Text style={styles.moduleSummary}>
-                      {rec ? `${passedScene ? 'Cleared' : 'Try again'} · best ${rec.bestFound}/${rec.total}` : `Find ${scene.hazards.length} hazards`}
+                      {rec
+                        ? t('induction.status.best', { status: passedScene ? t('induction.status.cleared') : t('induction.status.tryAgain'), best: rec.bestFound, total: rec.total })
+                        : t('induction.hazard.find', { count: scene.hazards.length })}
                     </Text>
                   </View>
                   <ChevronRight size={iconSizes.md} color={colors.textMuted} />
@@ -235,7 +243,7 @@ export default function InductionScreen() {
             );
           })}
 
-          <Text style={styles.hazardHeading}>PRE-START CHECK (P2H)</Text>
+          <Text style={styles.hazardHeading}>{t('induction.prestart.heading')}</Text>
           {PRESTART_SCENARIOS.map((scenario, i) => {
             const rec = induction.prestart[scenario.id];
             const passedCheck = Boolean(rec?.passedAt);
@@ -243,7 +251,7 @@ export default function InductionScreen() {
               <FadeInView key={scenario.id} index={INDUCTION_MODULES.length + 4 + i}>
                 <PressableScale
                   accessibilityRole="button"
-                  accessibilityLabel={`Pre-start check: ${scenario.title}${passedCheck ? ', passed' : ''}`}
+                  accessibilityLabel={t(passedCheck ? 'induction.prestart.a11yPassed' : 'induction.prestart.a11y', { title: scenario.title })}
                   onPress={() => router.push(`/induction/prestart/${scenario.id}`)}
                   style={[styles.glossaryCard, shadows.soft]}
                 >
@@ -255,7 +263,9 @@ export default function InductionScreen() {
                   <View style={styles.moduleInfo}>
                     <Text style={styles.moduleTitle}>{scenario.title}</Text>
                     <Text style={styles.moduleSummary}>
-                      {rec ? `${passedCheck ? 'Passed' : 'Try again'} · best ${rec.bestCorrect}/${rec.total}` : `${scenario.items.length}-point inspection`}
+                      {rec
+                        ? t('induction.status.best', { status: passedCheck ? t('induction.status.passed') : t('induction.status.tryAgain'), best: rec.bestCorrect, total: rec.total })
+                        : t('induction.prestart.points', { count: scenario.items.length })}
                     </Text>
                   </View>
                   <ChevronRight size={iconSizes.md} color={colors.textMuted} />
@@ -267,14 +277,14 @@ export default function InductionScreen() {
           <FadeInView index={INDUCTION_MODULES.length + 1}>
             <PressableScale
               accessibilityRole="button"
-              accessibilityLabel="Open glossary"
+              accessibilityLabel={t('induction.glossary.open')}
               onPress={() => router.push('/induction/glossary')}
               style={[styles.glossaryCard, shadows.soft]}
             >
               <BookOpen size={iconSizes.md} color={colors.info} />
               <View style={styles.moduleInfo}>
-                <Text style={styles.moduleTitle}>Glossary</Text>
-                <Text style={styles.moduleSummary}>Payload, cycle time, windrow and more</Text>
+                <Text style={styles.moduleTitle}>{t('induction.glossary.title')}</Text>
+                <Text style={styles.moduleSummary}>{t('induction.glossary.teaser')}</Text>
               </View>
               <ChevronRight size={iconSizes.md} color={colors.textMuted} />
             </PressableScale>
@@ -284,29 +294,29 @@ export default function InductionScreen() {
             <View style={styles.packHead}>
               <Package size={iconSizes.md} color={colors.info} />
               <View style={styles.moduleInfo}>
-                <Text style={styles.moduleTitle}>Content pack</Text>
+                <Text style={styles.moduleTitle}>{t('induction.pack.title')}</Text>
                 <Text style={styles.moduleSummary}>
                   {pack.name} · v{pack.version}
-                  {customPack ? ' · imported' : ' · built-in'}
+                  {customPack ? t('induction.pack.imported') : t('induction.pack.builtIn')}
                 </Text>
               </View>
             </View>
             <Text style={styles.packHint}>
-              HSE teams can export the template, edit modules, glossary and pre-start checks, then import it here.
+              {t('induction.pack.hint')}
             </Text>
             <View style={styles.packButtons}>
-              <PrimaryButton label="IMPORT" variant="outline" icon={<Upload size={iconSizes.sm} color={colors.text} />} onPress={pickPack} style={styles.packButton} />
-              <PrimaryButton label="TEMPLATE" variant="outline" icon={<Download size={iconSizes.sm} color={colors.text} />} onPress={exportTemplate} style={styles.packButton} />
+              <PrimaryButton label={t('induction.pack.import')} variant="outline" icon={<Upload size={iconSizes.sm} color={colors.text} />} onPress={pickPack} style={styles.packButton} />
+              <PrimaryButton label={t('induction.pack.template')} variant="outline" icon={<Download size={iconSizes.sm} color={colors.text} />} onPress={exportTemplate} style={styles.packButton} />
             </View>
-            {customPack ? <PrimaryButton label="USE BUILT-IN CONTENT" variant="ghost" onPress={confirmResetPack} /> : null}
+            {customPack ? <PrimaryButton label={t('induction.pack.useBuiltIn')} variant="ghost" onPress={confirmResetPack} /> : null}
           </FadeInView>
 
           <FadeInView index={INDUCTION_MODULES.length + 2}>
             <PrimaryButton
-              label={exporting ? 'PREPARING…' : 'EXPORT TRAINING REPORT (CSV)'}
+              label={exporting ? t('induction.preparing') : t('induction.report.button')}
               variant="outline"
               icon={<FileSpreadsheet size={iconSizes.sm} color={colors.text} />}
-              accessibilityHint="Creates a spreadsheet of all induction results to send to your supervisor or HSE"
+              accessibilityHint={t('induction.report.hint')}
               onPress={exportReport}
               disabled={exporting}
               style={styles.reportButton}
@@ -316,27 +326,27 @@ export default function InductionScreen() {
           <FadeInView index={INDUCTION_MODULES.length + 2} style={[styles.certCard, certified && styles.certCardDone]}>
             <View style={styles.certHeader}>
               <Award size={iconSizes.lg} color={certified ? colors.secondary : colors.textOnDarkMuted} />
-              <Text style={styles.certTitle}>Induction Certificate</Text>
+              <Text style={styles.certTitle}>{t('induction.cert.title')}</Text>
             </View>
-            <Text style={styles.certLabel}>TRAINEE NAME</Text>
+            <Text style={styles.certLabel}>{t('induction.field.name')}</Text>
             <TextInput
               value={induction.traineeName}
               onChangeText={setTraineeName}
-              placeholder="Enter your name"
+              placeholder={t('induction.field.namePlaceholder')}
               placeholderTextColor={colors.textOnDarkMuted}
               maxLength={MAX_TRAINEE_NAME}
-              accessibilityLabel="Trainee name for the certificate"
+              accessibilityLabel={t('induction.field.nameA11y')}
               style={styles.input}
               autoCorrect={false}
               returnKeyType="done"
             />
             {(
               [
-                ['employeeId', 'EMPLOYEE ID', 'e.g. ID-1042'],
-                ['site', 'SITE', 'e.g. North Pit'],
-                ['company', 'COMPANY / CONTRACTOR', 'e.g. Contractor A'],
+                ['employeeId', t('induction.field.employeeId'), t('induction.field.employeeIdPlaceholder'), t('induction.field.employeeIdA11y')],
+                ['site', t('induction.field.site'), t('induction.field.sitePlaceholder'), t('induction.field.siteA11y')],
+                ['company', t('induction.field.company'), t('induction.field.companyPlaceholder'), t('induction.field.companyA11y')],
               ] as const
-            ).map(([field, label, placeholder]) => (
+            ).map(([field, label, placeholder, a11y]) => (
               <View key={field}>
                 <Text style={styles.certLabel}>{label}</Text>
                 <TextInput
@@ -345,7 +355,7 @@ export default function InductionScreen() {
                   placeholder={placeholder}
                   placeholderTextColor={colors.textOnDarkMuted}
                   maxLength={MAX_TRAINEE_NAME}
-                  accessibilityLabel={label.toLowerCase()}
+                  accessibilityLabel={a11y}
                   style={styles.input}
                   autoCorrect={false}
                   returnKeyType="done"
@@ -354,22 +364,20 @@ export default function InductionScreen() {
             ))}
             {certified ? (
               <View style={styles.certBody}>
-                <Text style={styles.certName}>{induction.traineeName.trim() || 'Trainee'}</Text>
+                <Text style={styles.certName}>{induction.traineeName.trim() || t('induction.trainee')}</Text>
                 <Text style={styles.certText}>
-                  has completed all {progress.total} Site Induction modules: haul cycle, truck matching,
-                  queueing, routes, fuel planning and site safety basics.
+                  {t('induction.cert.completed', { total: progress.total })}
                 </Text>
                 <Text style={styles.certDate}>
-                  Issued {new Date(induction.certifiedAt!).toLocaleDateString()} · valid until{' '}
-                  {new Date(expiresAt!).toLocaleDateString()}
+                  {t('induction.cert.dates', { issued: fmtDate(induction.certifiedAt!), until: fmtDate(expiresAt!) })}
                 </Text>
                 <Text style={styles.certNote}>
-                  Game training record only — always complete your site’s official induction.
+                  {t('induction.cert.gameNote')}
                 </Text>
                 <PrimaryButton
-                  label={exporting ? 'PREPARING PDF…' : 'EXPORT PDF'}
+                  label={exporting ? t('induction.cert.preparingPdf') : t('induction.cert.exportPdf')}
                   icon={<Share2 size={iconSizes.sm} color={colors.textOnDark} />}
-                  accessibilityHint="Creates a PDF certificate you can share with your supervisor or HR"
+                  accessibilityHint={t('induction.cert.pdfHint')}
                   onPress={exportCertificate}
                   disabled={exporting}
                 />
@@ -378,19 +386,19 @@ export default function InductionScreen() {
               <View style={styles.certBody}>
                 <Text style={styles.certExpired}>
                   {certStatus === 'outdated'
-                    ? `Content updated to v${pack.version}`
-                    : `Certificate expired on ${new Date(expiresAt!).toLocaleDateString()}`}
+                    ? t('induction.cert.outdated', { version: pack.version })
+                    : t('induction.cert.expiredOn', { date: fmtDate(expiresAt!) })}
                 </Text>
                 <Text style={styles.certText}>
                   {certStatus === 'outdated'
-                    ? 'The site induction content has changed since you were certified. Renew to retake it.'
-                    : 'Inductions must be renewed every year. Renew to retake the modules and practical checks.'}
+                    ? t('induction.cert.outdatedBody')
+                    : t('induction.cert.expiredBody')}
                 </Text>
-                <PrimaryButton label="RENEW INDUCTION" icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />} onPress={confirmRenew} />
+                <PrimaryButton label={t('induction.renew.button')} icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />} onPress={confirmRenew} />
               </View>
             ) : (
               <Text style={styles.certLocked}>
-                Pass all {progress.total} module checks to unlock your certificate. {progress.total - progress.completed} to go.
+                {t('induction.cert.locked', { total: progress.total, left: progress.total - progress.completed })}
               </Text>
             )}
           </FadeInView>

@@ -6,6 +6,7 @@
 
 import type { TruckClass } from '@/types/game';
 import { balance } from './balance';
+import { t } from '@/i18n/core';
 
 export interface TruckClassSpec {
   truckClass: TruckClass;
@@ -255,6 +256,17 @@ export const EQUIPMENT_CATALOG: EquipmentCatalogEntry[] = [
     unlockAfterLevels: spec.unlockAfterLevels,
   })),
 ];
+/** Catalog details line in the current language. */
+export function equipmentDetailsLabel(entry: EquipmentCatalogEntry): string {
+  const [, key] = entry.id.split(':');
+  if (entry.kind === 'truck') {
+    const spec = TRUCK_CLASSES[key as TruckClass];
+    return t('shell.equip.truckDetails', { capacity: spec.capacity, speed: spec.speed.toFixed(2), fuel: spec.fuelEfficiency.toFixed(2) });
+  }
+  const spec = EXCAVATOR_CLASSES[key as ExcavatorClass];
+  return t('shell.equip.excavatorDetails', { bucket: spec.bucketCapacity, speed: spec.loadingSpeed.toFixed(1) });
+}
+
 export function isEquipmentUnlocked(entry: EquipmentCatalogEntry, levelsCompleted: number): boolean {
   return levelsCompleted >= entry.unlockAfterLevels;
 }
@@ -269,6 +281,6 @@ export function unlockedTruckClasses(levelsCompleted: number): TruckClass[] {
 /** "Now +12% · Next +18%" (or "Max +18%") for the equipment screen. */
 export function upgradeEffectLabel(def: UpgradeDef, level: number): string {
   const pct = (lvl: number) => `${def.reduces ? '−' : '+'}${Math.round(def.effectPerLevel * lvl * 100)}%`;
-  if (level >= balance.maxUpgradeLevel) return `Max ${pct(balance.maxUpgradeLevel)}`;
-  return `Now ${pct(level)} · Next ${pct(level + 1)}`;
+  if (level >= balance.maxUpgradeLevel) return t('shell.equip.effectMax', { pct: pct(balance.maxUpgradeLevel) });
+  return t('shell.equip.effectNext', { now: pct(level), next: pct(level + 1) });
 }

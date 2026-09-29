@@ -9,6 +9,7 @@ import { hapticSelection } from '@/services/haptics';
 import { playSfx } from '@/services/audio';
 import { PressableScale } from './PressableScale';
 import { StarRating } from './StarRating';
+import { useT } from '@/i18n';
 
 interface LevelCardProps {
   levelNumber: number;
@@ -22,10 +23,11 @@ interface LevelCardProps {
 }
 
 export function LevelCard({ levelNumber, name, accent, stars, locked, onPress, isNext = false }: LevelCardProps) {
+  const { t } = useT();
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`Level ${levelNumber}: ${name}. ${locked ? 'Locked' : `${stars} of 3 stars`}${isNext ? '. Next up' : ''}`}
+      accessibilityLabel={`${t('shell.levelCard.a11y', { number: levelNumber, name, state: locked ? t('shell.levelCard.locked') : t('shell.levelCard.stars', { count: stars }) })}${isNext ? t('shell.levelCard.nextUp') : ''}`}
       accessibilityState={{ disabled: locked }}
       disabled={locked}
       onPress={() => {
@@ -46,9 +48,9 @@ export function LevelCard({ levelNumber, name, accent, stars, locked, onPress, i
         <Text style={[styles.name, locked && styles.nameLocked]} numberOfLines={1}>
           {name}
         </Text>
-        {locked ? <Text style={styles.lockedText}>Complete the previous level</Text> : <StarRating count={stars} size={iconSizes.xs} />}
+        {locked ? <Text style={styles.lockedText}>{t('shell.levelCard.lockedHint')}</Text> : <StarRating count={stars} size={iconSizes.xs} />}
       </View>
-      {isNext ? <Text style={[styles.nextTag, { backgroundColor: accent }]}>NEXT</Text> : null}
+      {isNext ? <Text style={[styles.nextTag, { backgroundColor: accent }]}>{t('shell.levelCard.next')}</Text> : null}
       {!locked ? <ChevronRight size={iconSizes.sm} color={colors.textMuted} /> : null}
     </PressableScale>
   );

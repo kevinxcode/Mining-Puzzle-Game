@@ -13,6 +13,8 @@ import {
   type ContentPack,
   type ParseResult,
 } from '@/game/induction/contentPack';
+import { DEFAULT_CONTENT_PACK_ID } from '@/game/induction/contentPackId';
+import { useLanguageStore, type Lang } from '@/i18n';
 
 interface ContentStore {
   /** Imported pack, or null for the built-in content. */
@@ -46,7 +48,17 @@ export const useContentStore = create<ContentStore>()(
   ),
 );
 
-/** The content pack currently in use. */
+/** Built-in pack for a language (Indonesian or English). */
+export function builtInPack(lang: Lang): ContentPack {
+  return lang === 'id' ? DEFAULT_CONTENT_PACK_ID : DEFAULT_CONTENT_PACK;
+}
+
+/**
+ * The content pack currently in use. An imported pack is always shown as written
+ * by the site's HSE team; otherwise the built-in pack follows the app language.
+ */
 export function useActivePack(): ContentPack {
-  return useContentStore((s) => s.custom) ?? DEFAULT_CONTENT_PACK;
+  const custom = useContentStore((s) => s.custom);
+  const language = useLanguageStore((s) => s.language);
+  return custom ?? builtInPack(language);
 }

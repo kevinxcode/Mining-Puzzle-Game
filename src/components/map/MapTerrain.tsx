@@ -20,6 +20,8 @@ import Svg, {
 import { colors, radius } from '@/theme/tokens';
 import { getMaterial } from '@/game/config/materials';
 import type { LevelConfig, Point } from '@/types/game';
+import { useT } from '@/i18n';
+import { groundEllipsePath, groundPolygonPath, type MapView } from './projection';
 
 export interface RoadGeometry {
   road: LevelConfig['map']['roads'][number];
@@ -32,6 +34,8 @@ interface MapTerrainProps {
   height: number;
   scale: number;
   toScreen: (p: Point) => Point;
+  /** Top-down or 2.5D isometric. */
+  view: MapView;
   nodes: LevelConfig['map']['nodes'];
   roads: RoadGeometry[];
 }
@@ -71,10 +75,12 @@ function Label({ x, y, text, scale }: { x: number; y: number; text: string; scal
   );
 }
 
-function MapTerrainImpl({ width, height, scale, toScreen, nodes, roads }: MapTerrainProps) {
-  const center = toScreen({ x: 50, y: 50 });
-  const benchRx = 48 * scale;
-  const benchRy = 44 * scale;
+function MapTerrainImpl({ width, height, scale, toScreen, view, nodes, roads }: MapTerrainProps) {
+  const { tx } = useT();
+  const iso = view === 'iso';
+  // Iso: the site is a raised diamond slab; its two front faces give it thickness.
+  const corner = { n: toScreen({ x: 0, y: 0 }), e: toScreen({ x: 100, y: 0 }), s: toScreen({ x: 100, y: 100 }), w: toScreen({ x: 0, y: 100 }) };
+  const slab = 7 * scale;
 
   return (
     <Svg width={width} height={height}>
@@ -87,39 +93,53 @@ function MapTerrainImpl({ width, height, scale, toScreen, nodes, roads }: MapTer
           <Stop offset="0.6" stopColor="#000000" stopOpacity="0" />
           <Stop offset="1" stopColor="#5A4228" stopOpacity="0.28" />
         </RadialGradient>
+        <RadialGradient id="surround" cx="50%" cy="45%" r="75%">
+          <Stop offset="0" stopColor="#6B5A45" />
+          <Stop offset="1" stopColor="#3E3329" />
+        </RadialGradient>
         <LinearGradient id="water" x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor="#B7E2EC" />
           <Stop offset="1" stopColor="#86C4D4" />
         </LinearGradient>
       </Defs>
 
-      {/* Ground + open-pit bench contours for depth */}
-      <Rect x={0} y={0} width={width} height={height} rx={radius.lg} fill="url(#ground)" />
+      {/* Ground */}
+      {iso ? (
+        <G>
+          <Rect x={0} y={0} width={width} height={height} rx={radius.lg} fill="url(#surround)" />
+          <Path d={`M${corner.w.x} ${corner.w.y} L${corner.s.x} ${corner.s.y} L${corner.s.x} ${corner.s.y + slab} L${corner.w.x} ${corner.w.y + slab} Z`} fill="#A98A5F" />
+          <Path d={`M${corner.s.x} ${corner.s.y} L${corner.e.x} ${corner.e.y} L${corner.e.x} ${corner.e.y + slab} L${corner.s.x} ${corner.s.y + slab} Z`} fill="#8F7450" />
+          <Path d={`M${corner.n.x} ${corner.n.y} L${corner.e.x} ${corner.e.y} L${corner.s.x} ${corner.s.y} L${corner.w.x} ${corner.w.y} Z`} fill="url(#ground)" />
+          <Path d={`M${corner.w.x} ${corner.w.y} L${corner.n.x} ${corner.n.y} L${corner.e.x} ${corner.e.y}`} fill="none" stroke="#F3E7CF" strokeWidth={1.2 * scale} strokeOpacity={0.7} />
+        </G>
+      ) : (
+        <Rect x={0} y={0} width={width} height={height} rx={radius.lg} fill="url(#ground)" />
+      )}
+      {/* Open-pit bench contours for depth (drawn flat on the ground) */}
       {[1, 0.78, 0.56].map((f, i) => (
-        <Ellipse
+        <Path
           key={`bench-${i}`}
-          cx={center.x}
-          cy={center.y}
-          rx={benchRx * f}
-          ry={benchRy * f}
+          d={groundEllipsePath(toScreen, 50, 50, 48 * f, 44 * f)}
           fill={i === 2 ? 'rgba(160,125,85,0.10)' : 'none'}
           stroke="rgba(150,115,75,0.22)"
           strokeWidth={2.2 * scale}
         />
       ))}
-      {/* Quarry wall along the top */}
-      <Path
-        d={`M0 0 H${width} V${7 * scale} Q${width * 0.75} ${12 * scale} ${width / 2} ${8 * scale} T0 ${10 * scale} Z`}
-        fill="#CDB48D"
-      />
+      {/* Quarry wall along the top (top-down only; the iso slab has its own edges) */}
+      {iso ? null : (
+        <Path
+          d={`M0 0 H${width} V${7 * scale} Q${width * 0.75} ${12 * scale} ${width / 2} ${8 * scale} T0 ${10 * scale} Z`}
+          fill="#CDB48D"
+        />
+      )}
 
       {/* Puddles */}
       {DECORATIONS.puddles.map((p, i) => {
         const s = toScreen(p);
         return (
           <G key={`puddle-${i}`}>
-            <Ellipse cx={s.x} cy={s.y + 0.6 * scale} rx={p.rx * scale} ry={p.ry * scale} fill="rgba(90,66,40,0.18)" />
-            <Ellipse cx={s.x} cy={s.y} rx={p.rx * scale} ry={p.ry * scale} fill="url(#water)" />
+            <Path d={groundEllipsePath(toScreen, p.x, p.y + 0.6, p.rx, p.ry, 24)} fill="rgba(90,66,40,0.18)" />
+            <Path d={groundEllipsePath(toScreen, p.x, p.y, p.rx, p.ry, 24)} fill="url(#water)" />
             <Ellipse cx={s.x - p.rx * 0.3 * scale} cy={s.y - p.ry * 0.3 * scale} rx={p.rx * 0.35 * scale} ry={p.ry * 0.25 * scale} fill="#FFFFFF" opacity={0.45} />
           </G>
         );
@@ -241,7 +261,7 @@ function MapTerrainImpl({ width, height, scale, toScreen, nodes, roads }: MapTer
               <Ellipse cx={s.x} cy={s.y + 2.4 * scale} rx={w * 1.05} ry={2 * scale} fill="rgba(60,45,30,0.28)" />
               <Path d={`M${s.x - w} ${s.y + 2.4 * scale} Q${s.x - w * 0.4} ${s.y - 5 * scale} ${s.x} ${s.y - 5.2 * scale} Q${s.x + w * 0.5} ${s.y - 4.6 * scale} ${s.x + w} ${s.y + 2.4 * scale} Z`} fill={color} />
               <Path d={`M${s.x - w * 0.55} ${s.y - 1 * scale} Q${s.x - w * 0.2} ${s.y - 4.6 * scale} ${s.x + w * 0.1} ${s.y - 4.8 * scale}`} fill="none" stroke="#FFFFFF" strokeOpacity={0.35} strokeWidth={1 * scale} strokeLinecap="round" />
-              <Label x={s.x} y={s.y - 10 * scale} text={node.name} scale={scale} />
+              <Label x={s.x} y={s.y - 10 * scale} text={tx(node.name)} scale={scale} />
             </G>
           );
         }
@@ -253,20 +273,27 @@ function MapTerrainImpl({ width, height, scale, toScreen, nodes, roads }: MapTer
               <Rect x={s.x - t} y={s.y - t} width={t * 2} height={t * 2} rx={2 * scale} fill={colors.info} stroke={colors.card} strokeWidth={1 * scale} />
               <Rect x={s.x - t * 0.45} y={s.y - t * 0.6} width={t * 0.7} height={t * 1.2} rx={0.6 * scale} fill={colors.card} />
               <Path d={`M${s.x + t * 0.25} ${s.y - t * 0.3} h${t * 0.3} v${t * 0.8}`} fill="none" stroke={colors.card} strokeWidth={0.7 * scale} strokeLinecap="round" />
-              <Label x={s.x} y={s.y + t + 5.5 * scale} text={node.name} scale={scale} />
+              <Label x={s.x} y={s.y + t + 5.5 * scale} text={tx(node.name)} scale={scale} />
             </G>
           );
         }
         if (node.type === 'parking') {
-          const w = 8 * scale;
+          // Parking bay lies flat on the ground: 16 × 10 map units with three stall lines.
+          const { x, y } = node.position;
           const h = 5 * scale;
           return (
             <G key={node.id}>
-              <Rect x={s.x - w} y={s.y - h} width={w * 2} height={h * 2} rx={1.8 * scale} fill="#8C8577" opacity={0.55} />
-              {[-0.5, 0, 0.5].map((f) => (
-                <Line key={f} x1={s.x + f * w} y1={s.y - h * 0.8} x2={s.x + f * w} y2={s.y + h * 0.8} stroke="#F6EEDC" strokeWidth={0.6 * scale} />
-              ))}
-              <Label x={s.x} y={s.y + h + 5 * scale} text={node.name} scale={scale} />
+              <Path
+                d={groundPolygonPath(toScreen, [{ x: x - 8, y: y - 5 }, { x: x + 8, y: y - 5 }, { x: x + 8, y: y + 5 }, { x: x - 8, y: y + 5 }])}
+                fill="#8C8577"
+                opacity={0.55}
+              />
+              {[-4, 0, 4].map((dx) => {
+                const a = toScreen({ x: x + dx, y: y - 4 });
+                const b = toScreen({ x: x + dx, y: y + 4 });
+                return <Line key={dx} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#F6EEDC" strokeWidth={0.6 * scale} />;
+              })}
+              <Label x={s.x} y={s.y + h + 5 * scale} text={tx(node.name)} scale={scale} />
             </G>
           );
         }
@@ -276,7 +303,7 @@ function MapTerrainImpl({ width, height, scale, toScreen, nodes, roads }: MapTer
             <G key={node.id}>
               <Rect x={s.x - w} y={s.y - w * 0.6} width={w * 2} height={w * 1.4} rx={1 * scale} fill="#B8A07A" />
               <Path d={`M${s.x - w * 1.15} ${s.y - w * 0.6} L${s.x} ${s.y - w * 1.3} L${s.x + w * 1.15} ${s.y - w * 0.6} Z`} fill={colors.surfaceElevated} />
-              <Label x={s.x} y={s.y + w + 5 * scale} text={node.name} scale={scale} />
+              <Label x={s.x} y={s.y + w + 5 * scale} text={tx(node.name)} scale={scale} />
             </G>
           );
         }
@@ -284,7 +311,7 @@ function MapTerrainImpl({ width, height, scale, toScreen, nodes, roads }: MapTer
       })}
 
       {/* Vignette on top of terrain */}
-      <Rect x={0} y={0} width={width} height={height} rx={radius.lg} fill="url(#vignette)" />
+      {iso ? null : <Rect x={0} y={0} width={width} height={height} rx={radius.lg} fill="url(#vignette)" />}
     </Svg>
   );
 }

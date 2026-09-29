@@ -6,6 +6,8 @@
 
 import type { LevelConfig, MaterialTypeId, SimState, TruckRuntime } from '@/types/game';
 import { pushFeed } from './feed';
+import { t, tx } from '@/i18n/core';
+import { getMaterial } from '../config/materials';
 
 export interface DumpResult {
   credited: boolean;
@@ -35,11 +37,11 @@ export function registerDump(
     state.stats.tonsByMaterial[cargoMaterial] += tons;
     pushFeed(
       state,
-      `${truck.spec.name} dumped ${Math.round(tons)} t of ${cargoMaterial}.`,
+      t('game.feed.dumped', { truck: tx(truck.spec.name), tons: Math.round(tons), material: tx(getMaterial(cargoMaterial)?.name ?? cargoMaterial).toLowerCase() }),
     );
     return { credited: true, tons, materialId: cargoMaterial };
   }
 
-  pushFeed(state, `${truck.spec.name} dumped at the wrong stockpile — no credit.`);
+  pushFeed(state, t('game.feed.wrongStockpile', { truck: tx(truck.spec.name) }));
   return { credited: false, tons, materialId: undefined };
 }

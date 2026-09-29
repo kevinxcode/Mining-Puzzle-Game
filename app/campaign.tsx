@@ -13,9 +13,12 @@ import { FadeInView } from '@/components/FadeInView';
 import { LevelCard } from '@/components/LevelCard';
 import { RegionCard } from '@/components/RegionCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useT } from '@/i18n';
+import { levelDisplayName } from '@/game/levels/levelText';
 
 export default function CampaignScreen() {
   const router = useRouter();
+  const { t, tx } = useT();
   const levelRecords = useProgression((s) => s.levels);
 
   // A level unlocks when the previous one is completed (level 1 always open).
@@ -27,10 +30,10 @@ export default function CampaignScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScreenHeader
-        title="Campaign"
-        subtitle={`${Object.keys(levelRecords).length} of ${LEVELS.length} levels complete`}
+        title={t('shell.campaign.title')}
+        subtitle={t('shell.campaign.subtitle', { done: Object.keys(levelRecords).length, total: LEVELS.length })}
         right={
-          <View style={[styles.starPill, shadows.soft]} accessibilityLabel={`${totalStars} stars earned`}>
+          <View style={[styles.starPill, shadows.soft]} accessibilityLabel={t('shell.campaign.starsA11y', { count: totalStars })}>
             <Star size={iconSizes.xs} color={colors.secondary} fill={colors.secondary} />
             <Text style={styles.starText}>{totalStars}</Text>
           </View>
@@ -43,8 +46,8 @@ export default function CampaignScreen() {
           return (
             <FadeInView key={region.id} index={i}>
               <RegionCard
-                name={region.name}
-                tagline={region.tagline}
+                name={tx(region.name)}
+                tagline={tx(region.tagline)}
                 accent={region.accent}
                 completed={completed}
                 total={levels.length}
@@ -55,7 +58,7 @@ export default function CampaignScreen() {
                     <LevelCard
                       key={level.id}
                       levelNumber={Number(level.id)}
-                      name={level.name}
+                      name={levelDisplayName(level)}
                       accent={region.accent}
                       stars={levelRecords[level.id]?.stars ?? 0}
                       locked={!isUnlocked(Number(level.id))}

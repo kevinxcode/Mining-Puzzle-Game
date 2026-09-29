@@ -6,6 +6,7 @@
 import { Modal, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { PrimaryButton } from './PrimaryButton';
+import { useT } from '@/i18n';
 
 interface TutorialCoachmarkProps {
   visible: boolean;
@@ -22,6 +23,7 @@ export function TutorialCoachmark({
   onNext,
   onSkip,
 }: TutorialCoachmarkProps) {
+  const { t, tx } = useT();
   if (!visible || steps.length === 0) return null;
   const text = steps[Math.min(stepIndex, steps.length - 1)];
   const last = stepIndex >= steps.length - 1;
@@ -30,12 +32,12 @@ export function TutorialCoachmark({
       <View style={styles.backdrop}>
         <View style={[styles.card, shadows.raised]}>
           <Text style={styles.stepLabel}>
-            STEP {stepIndex + 1} / {steps.length}
+            {t('game.tutorial.step', { step: stepIndex + 1, total: steps.length })}
           </Text>
-          <Text style={styles.text}>{text}</Text>
+          <Text style={styles.text}>{tx(text)}</Text>
           <View style={styles.row}>
-            <PrimaryButton label={last ? 'GOT IT' : 'NEXT'} onPress={onNext} style={styles.button} />
-            <PrimaryButton label="SKIP" variant="ghost" onPress={onSkip} style={styles.button} />
+            <PrimaryButton label={last ? t('game.tutorial.gotIt') : t('game.tutorial.next')} onPress={onNext} style={styles.button} />
+            <PrimaryButton label={t('game.tutorial.skip')} variant="ghost" onPress={onSkip} style={styles.button} />
           </View>
         </View>
       </View>

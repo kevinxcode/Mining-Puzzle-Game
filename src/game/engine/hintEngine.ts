@@ -6,6 +6,7 @@
 import type { LevelConfig, SimState, TruckRuntime } from '@/types/game';
 import { roadBetween, roadTravelSeconds } from './routeEngine';
 import { liveLevel } from './simulationEngine';
+import { t, tx } from '@/i18n/core';
 
 export const HINTS_PER_RUN = 3;
 /** Refuel suggestion below this share of the tank. */
@@ -38,6 +39,7 @@ function routeSeconds(level: LevelConfig, nodePath: string[], truck: TruckRuntim
 export function computeHint(state: SimState, baseLevel: LevelConfig): Hint {
   const level = liveLevel(state, baseLevel);
   const exName = (id: string) => state.excavators.find((e) => e.id === id)?.spec.name ?? id;
+  const exLabel = (id: string) => tx(exName(id));
 
   // 1. Low fuel — only meaningful where a fuel station exists.
   if (level.map.nodes.some((n) => n.type === 'fuel')) {
@@ -46,7 +48,7 @@ export function computeHint(state: SimState, baseLevel: LevelConfig): Hint {
       .sort((a, b) => a.fuel / a.fuelCapacity - b.fuel / b.fuelCapacity)[0];
     if (low) {
       return {
-        message: `${low.spec.name} is low on fuel (${Math.round((low.fuel / low.fuelCapacity) * 100)}%). Send it to refuel before it runs dry on the ramp.`,
+        message: t('game.hint.lowFuel', { truck: tx(low.spec.name), percent: Math.round((low.fuel / low.fuelCapacity) * 100) }),
         action: { kind: 'fuel', truckId: low.id },
       };
     }
@@ -63,7 +65,7 @@ export function computeHint(state: SimState, baseLevel: LevelConfig): Hint {
       const truckId = crowded.queue[crowded.queue.length - 1];
       const truck = state.trucks.find((t) => t.id === truckId)!;
       return {
-        message: `${exName(crowded.id)} has ${crowded.queue.length} trucks waiting while ${exName(idle.id)} is idle. Move ${truck.spec.name} to ${exName(idle.id)}.`,
+        message: t('game.hint.rebalance', { crowded: exLabel(crowded.id), count: crowded.queue.length, idle: exLabel(idle.id), truck: tx(truck.spec.name) }),
         action: { kind: 'assign', truckId, excavatorId: idle.id },
       };
     }
@@ -90,21 +92,21 @@ export function computeHint(state: SimState, baseLevel: LevelConfig): Hint {
     const closed = best.gain === 1;
     return {
       message: closed
-        ? `${best.truck.spec.name}'s route is closed. Switch it to ${best.routeName}.`
-        : `${best.routeName} is about ${Math.round(best.gain * 100)}% faster for ${best.truck.spec.name}. Try rerouting it.`,
+        ? t('game.hint.routeClosed', { truck: tx(best.truck.spec.name), route: tx(best.routeName) })
+        : t('game.hint.fasterRoute', { route: tx(best.routeName), percent: Math.round(best.gain * 100), truck: tx(best.truck.spec.name) }),
       action: { kind: 'route', truckId: best.truck.id, routeId: best.routeId },
     };
   }
 
   // 4. Nothing obviously wrong.
   if (state.status === 'ready') {
-    return { message: 'Your plan looks good. Press START to begin the shift.' };
+    return { message: t('game.hint.planGood') };
   }
   const idleTrucks = state.trucks.filter((t) => t.state === 'idle').length;
   return {
     message:
       idleTrucks > 0
-        ? 'Some trucks are idle — make sure every truck has an excavator and a route.'
-        : 'Your fleet looks balanced. Speed up to 2x and watch the queue times.',
+        ? t('game.hint.idleTrucks')
+        : t('game.hint.balanced'),
   };
 }

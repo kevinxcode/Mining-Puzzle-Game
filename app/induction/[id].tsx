@@ -27,11 +27,13 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { playSfx } from '@/services/audio';
 import { hapticSelection, hapticSuccess, hapticWarning } from '@/services/haptics';
+import { useT } from '@/i18n';
 
 type Phase = 'learn' | 'quiz' | 'result';
 
 export default function InductionModuleScreen() {
   const router = useRouter();
+  const { t, tx } = useT();
   const params = useLocalSearchParams<{ id: string }>();
   const pack = useActivePack();
   const module = pack.modules.find((m) => m.id === String(params.id));
@@ -49,7 +51,7 @@ export default function InductionModuleScreen() {
   if (!module) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ScreenHeader title="Module not found" />
+        <ScreenHeader title={t('induction.module.notFound')} />
       </SafeAreaView>
     );
   }
@@ -105,10 +107,10 @@ export default function InductionModuleScreen() {
 
   const subtitle =
     phase === 'learn'
-      ? `Card ${cardIndex + 1} of ${module.cards.length}`
+      ? t('induction.module.card', { n: cardIndex + 1, total: module.cards.length })
       : phase === 'quiz'
-        ? `Question ${questionIndex + 1} of ${module.questions.length}`
-        : 'Check complete';
+        ? t('induction.module.question', { n: questionIndex + 1, total: module.questions.length })
+        : t('induction.module.checkComplete');
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -142,17 +144,17 @@ export default function InductionModuleScreen() {
               </ScrollView>
             ))}
           </ScrollView>
-          <View style={styles.dots} accessibilityLabel={`Card ${cardIndex + 1} of ${module.cards.length}`}>
+          <View style={styles.dots} accessibilityLabel={t('induction.module.card', { n: cardIndex + 1, total: module.cards.length })}>
             {module.cards.map((card, i) => (
               <View key={card.id} style={[styles.dot, i === cardIndex && styles.dotActive]} />
             ))}
           </View>
           <View style={styles.footer}>
             {cardIndex > 0 ? (
-              <PrimaryButton label="BACK" variant="outline" onPress={() => goToCard(cardIndex - 1)} style={styles.half} />
+              <PrimaryButton label={t('induction.back')} variant="outline" onPress={() => goToCard(cardIndex - 1)} style={styles.half} />
             ) : null}
             <PrimaryButton
-              label={lastCard ? 'START CHECK' : 'NEXT'}
+              label={lastCard ? t('induction.startCheck') : t('induction.next')}
               onPress={() => (lastCard ? setPhase('quiz') : goToCard(cardIndex + 1))}
               style={styles.half}
             />
@@ -164,7 +166,7 @@ export default function InductionModuleScreen() {
         <View style={styles.flex}>
           <ScrollView contentContainerStyle={styles.quizContent}>
             <Animated.View key={question.id} entering={FadeInDown} style={styles.quizInner}>
-              <Text style={styles.quizLabel}>QUICK CHECK</Text>
+              <Text style={styles.quizLabel}>{t('induction.quickCheck')}</Text>
               <Text style={styles.prompt} accessibilityRole="header">
                 {question.prompt}
               </Text>
@@ -177,7 +179,13 @@ export default function InductionModuleScreen() {
                     key={option.id}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: isChosen, disabled: answered }}
-                    accessibilityLabel={`${option.text}${showCorrect ? ', correct answer' : showWrong ? ', incorrect' : ''}`}
+                    accessibilityLabel={
+                      showCorrect
+                        ? t('induction.option.correct', { text: option.text })
+                        : showWrong
+                          ? t('induction.option.wrong', { text: option.text })
+                          : option.text
+                    }
                     disabled={answered}
                     onPress={() => choose(option.id)}
                     style={[
@@ -200,7 +208,7 @@ export default function InductionModuleScreen() {
                   accessibilityLiveRegion="polite"
                 >
                   <Text style={styles.feedbackTitle}>
-                    {isAnswerCorrect(question, chosen) ? 'Correct!' : 'Not quite.'}
+                    {isAnswerCorrect(question, chosen) ? t('induction.feedback.correct') : t('induction.feedback.wrong')}
                   </Text>
                   <Text style={styles.feedbackText}>{question.explanation}</Text>
                 </Animated.View>
@@ -209,7 +217,7 @@ export default function InductionModuleScreen() {
           </ScrollView>
           <View style={styles.footer}>
             <PrimaryButton
-              label={questionIndex < module.questions.length - 1 ? 'NEXT QUESTION' : 'SEE RESULT'}
+              label={questionIndex < module.questions.length - 1 ? t('induction.nextQuestion') : t('induction.seeResult')}
               onPress={nextQuestion}
               disabled={!answered}
               style={styles.half}
@@ -227,27 +235,27 @@ export default function InductionModuleScreen() {
               <RotateCcw size={iconSizes.xl * 1.5} color={colors.warning} />
             )}
             <Text style={[styles.resultTitle, { color: score.passed ? colors.success : colors.warning }]}>
-              {score.passed ? 'Module passed' : 'Almost there'}
+              {score.passed ? t('induction.result.passed') : t('induction.result.almost')}
             </Text>
             <Text style={styles.resultScore}>
-              {score.correct} / {score.total} correct
+              {t('induction.result.score', { correct: score.correct, total: score.total })}
             </Text>
             <Text style={styles.resultText}>
               {score.passed
-                ? 'Now put it into practice in a real mission.'
-                : 'Review the cards and try the check again.'}
+                ? t('induction.result.passedBody')
+                : t('induction.result.failedBody')}
             </Text>
           </Animated.View>
 
           {practiceLevel ? (
             <View style={[styles.practiceCard, shadows.soft]}>
-              <Text style={styles.quizLabel}>PRACTICE</Text>
+              <Text style={styles.quizLabel}>{t('induction.practice')}</Text>
               <Text style={styles.practiceTitle}>
-                Level {practiceLevel.id} · {practiceLevel.name}
+                {t('induction.practice.level', { id: practiceLevel.id, name: tx(practiceLevel.name) })}
               </Text>
               <Text style={styles.practiceNote}>{module.practiceNote}</Text>
               <PrimaryButton
-                label="PRACTICE"
+                label={t('induction.practice')}
                 icon={<Gamepad2 size={iconSizes.sm} color={colors.textOnDark} />}
                 onPress={() => router.push(`/level/${practiceLevel.id}`)}
               />
@@ -255,16 +263,16 @@ export default function InductionModuleScreen() {
           ) : null}
 
           <View style={styles.resultButtons}>
-            {!score.passed ? <PrimaryButton label="RETAKE CHECK" variant="secondary" onPress={retake} /> : null}
+            {!score.passed ? <PrimaryButton label={t('induction.retakeCheck')} variant="secondary" onPress={retake} /> : null}
             <PrimaryButton
-              label="REVIEW CARDS"
+              label={t('induction.reviewCards')}
               variant="outline"
               onPress={() => {
                 setCardIndex(0);
                 setPhase('learn');
               }}
             />
-            <PrimaryButton label="ALL MODULES" variant="ghost" onPress={() => router.back()} />
+            <PrimaryButton label={t('induction.allModules')} variant="ghost" onPress={() => router.back()} />
           </View>
         </ScrollView>
       ) : null}

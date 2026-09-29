@@ -7,6 +7,8 @@ import type { LevelConfig, SimState } from '@/types/game';
 import { balance } from './config/balance';
 import { scoreWeights } from './config/rewards';
 import { fleetIdlePercent } from './engine/simulationEngine';
+import { t, type MessageKey } from '@/i18n/core';
+import { objectiveText } from './levels/levelText';
 
 /* ------------------------------------------------------------------ */
 /* Stars                                                               */
@@ -116,15 +118,15 @@ export interface FailureAnalysis {
   tip: string;
 }
 
-const FAILURE_TIPS: Record<string, string> = {
-  fuel: 'Send trucks to refuel sooner and prefer efficient routes.',
-  idle: 'Rebalance trucks across excavators to reduce waiting.',
-  queue: 'Spread trucks across different routes to avoid long queues.',
-  'no-jam': 'Avoid narrow roads when traffic builds up.',
-  deliver: 'Check every stockpile receives its material quota.',
-  trucks: 'Use fewer trucks and keep them loaded.',
-  time: 'Choose faster routes and keep every truck hauling.',
-  tons: 'Assign more trucks or switch to faster routes.',
+const FAILURE_TIPS: Record<string, MessageKey> = {
+  fuel: 'game.tip.fuel',
+  idle: 'game.tip.idle',
+  queue: 'game.tip.queue',
+  'no-jam': 'game.tip.noJam',
+  deliver: 'game.tip.deliver',
+  trucks: 'game.tip.trucks',
+  time: 'game.tip.time',
+  tons: 'game.tip.tons',
 };
 
 export function analyzeFailure(
@@ -135,15 +137,15 @@ export function analyzeFailure(
   const objective = level.objectives.find((o) => o.id === failedObjectiveId);
   if (objective && objective.kind !== 'tons') {
     return {
-      issue: objective.description,
-      tip: FAILURE_TIPS[objective.kind] ?? 'Adjust your strategy and try again.',
+      issue: objectiveText(objective),
+      tip: t(FAILURE_TIPS[objective.kind] ?? 'game.tip.default'),
     };
   }
   // Primary target missed (or the clock ran out): show concrete progress.
   const tonsShort = Math.max(0, Math.round(state.targetTons - state.stats.tonsMoved));
   return {
-    issue: `Production ${Math.round(state.stats.tonsMoved)} / ${state.targetTons} t — ${tonsShort} t short`,
-    tip: FAILURE_TIPS.tons,
+    issue: t('game.issue.tonsShort', { tons: Math.round(state.stats.tonsMoved), target: state.targetTons, short: tonsShort }),
+    tip: t(FAILURE_TIPS.tons),
   };
 }
 

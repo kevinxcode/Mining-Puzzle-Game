@@ -121,6 +121,11 @@ export class SimController {
       }
       this.stepOnce();
     }
+    // A finished mission needs no more frames (the result screen is static).
+    if ((this.state.status === 'success' || this.state.status === 'failed') && this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
     this.notify();
   }
 

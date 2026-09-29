@@ -23,6 +23,7 @@ import type { LevelConfig, TruckRuntime, TruckRuntimeState } from '@/types/game'
 import { hapticLight } from '@/services/haptics';
 import { playSfx } from '@/services/audio';
 import { PrimaryButton } from './PrimaryButton';
+import { t, useT, type MessageKey } from '@/i18n';
 
 interface EquipmentSheetProps {
   visible: boolean;
@@ -36,18 +37,21 @@ interface EquipmentSheetProps {
   onOpenRoutes: (truckId: string) => void;
 }
 
-const STATUS_LABELS: Record<TruckRuntimeState, string> = {
-  idle: 'Idle',
-  'driving-to-loader': 'To loader',
-  queueing: 'In queue',
-  loading: 'Loading',
-  hauling: 'Hauling',
-  dumping: 'Dumping',
-  returning: 'Returning',
-  'to-fuel': 'To fuel',
-  refueling: 'Refueling',
-  breakdown: 'Breakdown',
+const STATUS_KEYS: Record<TruckRuntimeState, MessageKey> = {
+  idle: 'game.truckState.idle',
+  'driving-to-loader': 'game.truckState.toLoader',
+  queueing: 'game.truckState.queueing',
+  loading: 'game.truckState.loading',
+  hauling: 'game.truckState.hauling',
+  dumping: 'game.truckState.dumping',
+  returning: 'game.truckState.returning',
+  'to-fuel': 'game.truckState.toFuel',
+  refueling: 'game.truckState.refueling',
+  breakdown: 'game.truckState.breakdown',
 };
+
+/** Player-facing truck state name in the current language. */
+export const truckStateLabel = (state: TruckRuntimeState): string => t(STATUS_KEYS[state]);
 
 const STATUS_ICONS: Record<TruckRuntimeState, ReactNode> = {
   idle: <Pause size={12} color={colors.textMuted} />,
@@ -73,6 +77,7 @@ export function EquipmentSheet({
   onAssign,
   onOpenRoutes,
 }: EquipmentSheetProps) {
+  const { t, tx } = useT();
   const selected = trucks.find((t) => t.id === selectedTruckId) ?? null;
 
   const close = () => {
@@ -83,13 +88,13 @@ export function EquipmentSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close equipment sheet" />
+      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel={t('game.equipment.closeSheet')} />
       <View style={[styles.sheet, shadows.raised]}>
         <View style={styles.header}>
-          <Text style={styles.title}>{selected ? selected.spec.name : 'Equipment'}</Text>
+          <Text style={styles.title}>{selected ? tx(selected.spec.name) : t('game.equipment.title')}</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Close"
+            accessibilityLabel={t('game.common.close')}
             onPress={close}
             style={styles.closeButton}
           >
@@ -112,7 +117,7 @@ export function EquipmentSheet({
               <Pressable
                 key={truck.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${truck.spec.name}, ${STATUS_LABELS[truck.state]}`}
+                accessibilityLabel={t('game.equipment.rowA11y', { name: tx(truck.spec.name), status: truckStateLabel(truck.state) })}
                 onPress={() => {
                   playSfx('tap');
                   hapticLight();
@@ -122,9 +127,9 @@ export function EquipmentSheet({
               >
                 <View style={styles.rowIcon}>{STATUS_ICONS[truck.state]}</View>
                 <View style={styles.rowInfo}>
-                  <Text style={styles.rowTitle}>{truck.spec.name}</Text>
+                  <Text style={styles.rowTitle}>{tx(truck.spec.name)}</Text>
                   <Text style={styles.rowStatus}>
-                    {STATUS_LABELS[truck.state]} · {formatTons(truck.load)} / {formatTons(truck.spec.capacity)} · {formatFuel(truck.fuel)}
+                    {truckStateLabel(truck.state)} · {formatTons(truck.load)} / {formatTons(truck.spec.capacity)} · {formatFuel(truck.fuel)}
                   </Text>
                 </View>
               </Pressable>
@@ -151,6 +156,7 @@ function TruckDetail({
   onOpenRoutes: (truckId: string) => void;
   onBack: () => void;
 }) {
+  const { t, tx } = useT();
   const excavator = level.excavators.find((e) => e.id === truck.assignedExcavatorId);
   const route = level.map.routes.find((r) => r.id === truck.routeId);
   const otherExcavators = level.excavators.filter((e) => e.id !== truck.assignedExcavatorId);
@@ -159,18 +165,18 @@ function TruckDetail({
   return (
     <ScrollView contentContainerStyle={styles.detailContent}>
       <View style={styles.detailGrid}>
-        <DetailItem label="Status" value={STATUS_LABELS[truck.state]} />
+        <DetailItem label={t('game.equipment.status')} value={truckStateLabel(truck.state)} />
         <DetailItem
-          label="Load"
+          label={t('game.equipment.load')}
           value={`${formatTons(truck.load)} / ${formatTons(truck.spec.capacity)}`}
         />
         <DetailItem
-          label="Fuel"
+          label={t('game.equipment.fuel')}
           value={`${Math.round((truck.fuel / Math.max(1, truck.fuelCapacity)) * 100)}%`}
         />
-        <DetailItem label="Assigned" value={excavator?.name ?? '—'} />
-        <DetailItem label="Route" value={route?.name ?? '—'} />
-        <DetailItem label="Trips" value={String(truck.trips)} />
+        <DetailItem label={t('game.equipment.assigned')} value={excavator ? tx(excavator.name) : '—'} />
+        <DetailItem label={t('game.equipment.route')} value={route ? tx(route.name) : '—'} />
+        <DetailItem label={t('game.equipment.trips')} value={String(truck.trips)} />
       </View>
 
       <View style={styles.loadTrack}>
@@ -178,9 +184,9 @@ function TruckDetail({
       </View>
 
       <View style={styles.actions}>
-        <PrimaryButton label="REROUTE" variant="secondary" onPress={() => onOpenRoutes(truck.id)} style={styles.actionButton} />
+        <PrimaryButton label={t('game.equipment.reroute')} variant="secondary" onPress={() => onOpenRoutes(truck.id)} style={styles.actionButton} />
         <PrimaryButton
-          label="SEND TO FUEL"
+          label={t('game.equipment.sendToFuel')}
           variant="ghost"
           onPress={() => onSendToFuel(truck.id)}
           style={styles.actionButton}
@@ -189,12 +195,12 @@ function TruckDetail({
 
       {otherExcavators.length > 0 ? (
         <View style={styles.reassignBlock}>
-          <Text style={styles.reassignLabel}>Reassign to</Text>
+          <Text style={styles.reassignLabel}>{t('game.equipment.reassignTo')}</Text>
           <View style={styles.reassignRow}>
             {otherExcavators.map((ex) => (
               <PrimaryButton
                 key={ex.id}
-                label={ex.name}
+                label={tx(ex.name)}
                 variant="ghost"
                 onPress={() => onAssign(truck.id, ex.id)}
                 style={styles.actionButton}
@@ -204,7 +210,7 @@ function TruckDetail({
         </View>
       ) : null}
 
-      <PrimaryButton label="BACK TO LIST" variant="primary" onPress={onBack} style={styles.backButton} />
+      <PrimaryButton label={t('game.equipment.backToList')} variant="primary" onPress={onBack} style={styles.backButton} />
     </ScrollView>
   );
 }

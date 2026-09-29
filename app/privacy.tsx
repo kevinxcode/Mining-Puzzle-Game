@@ -7,52 +7,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, layout, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { FadeInView } from '@/components/FadeInView';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useT, type MessageKey } from '@/i18n';
 
-const LAST_UPDATED = '28 September 2026';
-
-const SECTIONS: { title: string; body: string }[] = [
-  {
-    title: 'What we collect',
-    body:
-      'Nothing is sent to us or to any third party. Mining Puzzle Game has no accounts, no ads, no analytics and no tracking.',
-  },
-  {
-    title: 'What is stored on your device',
-    body:
-      'Your game progress, stars, coins, upgrades, statistics, achievements, settings and Site Induction results (including the trainee name you type for the certificate), your friend-challenge nickname, an imported content pack and a log of the last 10 app errors are saved only in this app’s local storage on your device.',
-  },
-  {
-    title: 'Sharing',
-    body:
-      'Data leaves your device only when you choose to share or export it, and you decide where it goes: an induction certificate (PDF) or training report (CSV) with the trainee details you entered; a content pack template with training material only; or a result message or friend challenge code with your nickname, the level and your moves — never your trainee name, employee ID or other progress. If the app shows its error screen, you can also share an error report containing only the error, the screen, the app version and the Android version.',
-  },
-  {
-    title: 'Deleting your data',
-    body:
-      'Use Settings → Reset Progress to erase your progress, induction records, nickname and error log (an imported content pack is kept), or uninstall the app to remove everything.',
-  },
-  {
-    title: 'Children',
-    body: 'The app does not knowingly collect any information from anyone, including children.',
-  },
-  {
-    title: 'Changes',
-    body:
-      'If this policy changes, the updated version will be published in the app and on the store listing.',
-  },
+const SECTIONS: { title: MessageKey; body: MessageKey }[] = [
+  { title: 'shell.privacy.collectTitle', body: 'shell.privacy.collectBody' },
+  { title: 'shell.privacy.storedTitle', body: 'shell.privacy.storedBody' },
+  { title: 'shell.privacy.sharingTitle', body: 'shell.privacy.sharingBody' },
+  { title: 'shell.privacy.deleteTitle', body: 'shell.privacy.deleteBody' },
+  { title: 'shell.privacy.childrenTitle', body: 'shell.privacy.childrenBody' },
+  { title: 'shell.privacy.changesTitle', body: 'shell.privacy.changesBody' },
 ];
 
 export default function PrivacyScreen() {
+  const { t } = useT();
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Privacy Policy" subtitle={`Last updated ${LAST_UPDATED}`} />
+      <ScreenHeader title={t('shell.privacy.title')} subtitle={t('shell.privacy.updated', { date: t('shell.privacy.date') })} />
       <ScrollView contentContainerStyle={styles.content}>
         {SECTIONS.map((section, index) => (
-          <FadeInView key={section.title} index={index} style={styles.card}>
+          <FadeInView key={String(section.title)} index={index} style={styles.card}>
             <Text style={styles.title} accessibilityRole="header">
-              {section.title}
+              {t(section.title)}
             </Text>
-            <Text style={styles.body}>{section.body}</Text>
+            <Text style={styles.body}>{t(section.body)}</Text>
           </FadeInView>
         ))}
       </ScrollView>

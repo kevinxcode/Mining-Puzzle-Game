@@ -18,6 +18,7 @@ import {
   type EquipmentCatalogEntry,
   isEquipmentUnlocked,
   upgradeEffectLabel,
+  equipmentDetailsLabel,
 } from '@/game/config/equipment';
 import { balance } from '@/game/config/balance';
 import { playerLevelFromXp } from '@/state/save';
@@ -27,8 +28,10 @@ import { FadeInView } from '@/components/FadeInView';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { StatCard } from '@/components/StatCard';
+import { useT } from '@/i18n';
 
 export default function EquipmentScreen() {
+  const { t, tx } = useT();
   const xp = useProgression((s) => s.xp);
   const coins = useProgression((s) => s.coins);
   const upgrades = useProgression((s) => s.upgrades);
@@ -42,6 +45,8 @@ export default function EquipmentScreen() {
 
   const renderEntry = (entry: EquipmentCatalogEntry, index: number) => {
     const unlocked = isEquipmentUnlocked(entry, levelsCompleted);
+    const name = tx(entry.name);
+    const details = equipmentDetailsLabel(entry);
     return (
       <FadeInView
         key={entry.id}
@@ -51,7 +56,7 @@ export default function EquipmentScreen() {
         <View
           style={styles.entryRow}
           accessible
-          accessibilityLabel={`${entry.name}: ${unlocked ? entry.details : `locked, unlocks after completing ${entry.unlockAfterLevels} campaign levels`}`}
+          accessibilityLabel={`${name}: ${unlocked ? details : t('shell.equip.lockedA11y', { count: entry.unlockAfterLevels })}`}
         >
           <View style={[styles.entryIcon, !unlocked && styles.entryIconLocked]}>
             {!unlocked ? (
@@ -63,9 +68,9 @@ export default function EquipmentScreen() {
             )}
           </View>
           <View style={styles.entryInfo}>
-            <Text style={styles.entryName}>{entry.name}</Text>
+            <Text style={styles.entryName}>{name}</Text>
             <Text style={styles.entryDetails}>
-              {unlocked ? entry.details : `Unlocks after ${entry.unlockAfterLevels} campaign levels (${levelsCompleted}/${entry.unlockAfterLevels})`}
+              {unlocked ? details : t('shell.equip.unlocksAfter', { count: entry.unlockAfterLevels, done: levelsCompleted })}
             </Text>
           </View>
         </View>
@@ -76,10 +81,10 @@ export default function EquipmentScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScreenHeader
-        title="Equipment"
-        subtitle="Fleet catalog & upgrades"
+        title={t('shell.equip.title')}
+        subtitle={t('shell.equip.subtitle')}
         right={
-          <View style={[styles.coinsBadge, shadows.soft]} accessibilityLabel={`${coins} coins`}>
+          <View style={[styles.coinsBadge, shadows.soft]} accessibilityLabel={t('shell.common.coinsA11y', { count: coins })}>
             <Coins size={iconSizes.xs} color={colors.primary} />
             <Text style={styles.coinsText}>{formatNumber(coins)}</Text>
           </View>
@@ -87,38 +92,39 @@ export default function EquipmentScreen() {
       />
       <ScrollView contentContainerStyle={styles.content}>
         <FadeInView style={styles.statRow}>
-          <StatCard label="Player level" value={`LV ${playerLevel}`} icon={<Sparkles size={iconSizes.sm} color={colors.primary} />} />
+          <StatCard label={t('shell.equip.playerLevel')} value={t('shell.xp.level', { level: playerLevel })} icon={<Sparkles size={iconSizes.sm} color={colors.primary} />} />
           <StatCard
-            label="Coins"
+            label={t('shell.equip.coins')}
             value={formatNumber(coins)}
             accent={colors.warning}
             icon={<Coins size={iconSizes.sm} color={colors.warning} />}
           />
         </FadeInView>
 
-        <Text style={styles.sectionTitle}>Upgrades</Text>
+        <Text style={styles.sectionTitle}>{t('shell.equip.upgrades')}</Text>
         {UPGRADES.map((def, i) => {
           const level = upgradeLevelOf(upgrades, def.id);
           const maxed = level >= balance.maxUpgradeLevel;
           const cost = upgradeCost(upgrades, def);
           const affordable = coins >= cost;
+          const defName = tx(def.name);
           return (
             <FadeInView key={def.id} index={i + 1} style={styles.upgradeCard}>
               <View style={styles.upgradeInfo}>
                 <Text style={styles.upgradeName}>
-                  {def.name} <Text style={styles.upgradeTarget}>({def.target})</Text>
+                  {defName} <Text style={styles.upgradeTarget}>({t(def.target === 'truck' ? 'shell.equip.targetTruck' : 'shell.equip.targetExcavator')})</Text>
                 </Text>
-                <Text style={styles.upgradeDesc}>{def.description}</Text>
+                <Text style={styles.upgradeDesc}>{tx(def.description)}</Text>
                 <Text style={styles.upgradeEffect}>{upgradeEffectLabel(def, level)}</Text>
-                <View style={styles.pips} accessible accessibilityLabel={`Level ${level} of ${balance.maxUpgradeLevel}`}>
+                <View style={styles.pips} accessible accessibilityLabel={t('shell.common.levelOf', { level, max: balance.maxUpgradeLevel })}>
                   {Array.from({ length: balance.maxUpgradeLevel }, (_, p) => (
                     <View key={p} style={[styles.pip, p < level && styles.pipOn]} />
                   ))}
                 </View>
               </View>
               <PrimaryButton
-                label={maxed ? 'MAX' : `${cost}`}
-                accessibilityLabel={maxed ? `${def.name} maxed` : `Buy ${def.name} for ${cost} coins`}
+                label={maxed ? t('shell.common.max') : `${cost}`}
+                accessibilityLabel={maxed ? t('shell.equip.maxedA11y', { name: defName }) : t('shell.equip.buyA11y', { name: defName, cost })}
                 icon={maxed ? undefined : <Coins size={iconSizes.xs} color={colors.textOnDark} />}
                 disabled={maxed || !affordable}
                 onPress={() => buyUpgrade(def.id)}
@@ -128,8 +134,8 @@ export default function EquipmentScreen() {
           );
         })}
 
-        <Text style={styles.sectionTitle}>Liveries</Text>
-        <Text style={styles.upgradeDesc}>Cosmetic paint for your haul fleet. No effect on performance.</Text>
+        <Text style={styles.sectionTitle}>{t('shell.equip.liveries')}</Text>
+        <Text style={styles.upgradeDesc}>{t('shell.equip.liveriesDesc')}</Text>
         <View style={styles.liveryGrid}>
           {LIVERIES.map((livery) => {
             const owned = isLiveryOwned(cosmetics, livery, threeStars);
@@ -138,12 +144,12 @@ export default function EquipmentScreen() {
             const affordable = coins >= livery.cost;
             const onPress = () => (owned ? selectLivery(livery.id) : buyLivery(livery.id));
             const status = equipped
-              ? 'Equipped'
+              ? t('shell.equip.equipped')
               : owned
-                ? 'Tap to equip'
+                ? t('shell.equip.tapToEquip')
                 : starLocked
-                  ? `${threeStars}/${livery.unlockThreeStars} 3★ levels`
-                  : `${livery.cost} coins`;
+                  ? t('shell.equip.starLocked', { have: threeStars, need: livery.unlockThreeStars ?? 0 })
+                  : t('shell.equip.cost', { cost: livery.cost });
             return (
               <PressableScale
                 key={livery.id}
@@ -151,11 +157,11 @@ export default function EquipmentScreen() {
                 disabled={equipped || starLocked || (!owned && !affordable)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: equipped }}
-                accessibilityLabel={`${livery.name} livery, ${status}`}
+                accessibilityLabel={t('shell.equip.liveryA11y', { name: tx(livery.name), status })}
                 style={[styles.liveryCard, equipped && styles.liveryEquipped, (starLocked || (!owned && !affordable)) && styles.entryLocked]}
               >
                 <LiveryPreview livery={livery} />
-                <Text style={styles.upgradeName} numberOfLines={1}>{livery.name}</Text>
+                <Text style={styles.upgradeName} numberOfLines={1}>{tx(livery.name)}</Text>
                 <View style={styles.liveryStatus}>
                   {equipped ? (
                     <Check size={iconSizes.xs} color={colors.success} />
@@ -171,10 +177,10 @@ export default function EquipmentScreen() {
           })}
         </View>
 
-        <Text style={styles.sectionTitle}>Trucks</Text>
+        <Text style={styles.sectionTitle}>{t('shell.equip.trucks')}</Text>
         {EQUIPMENT_CATALOG.filter((e) => e.kind === 'truck').map(renderEntry)}
 
-        <Text style={styles.sectionTitle}>Excavators</Text>
+        <Text style={styles.sectionTitle}>{t('shell.equip.excavators')}</Text>
         {EQUIPMENT_CATALOG.filter((e) => e.kind === 'excavator').map(renderEntry)}
       </ScrollView>
     </SafeAreaView>

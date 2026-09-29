@@ -12,7 +12,7 @@ Nothing is sent to us or to any third party. Mining Puzzle Game has no accounts,
 
 2. What is stored on your device
 
-Your game progress, stars, coins, upgrades, statistics, achievements, settings and Site Induction results (including the trainee name you type for the certificate), your friend-challenge nickname, an imported content pack and a log of the last 10 app errors are saved only in the app's local storage on your device. This data is never uploaded by the app.
+Your game progress, stars, coins, upgrades, statistics, achievements, settings and Site Induction results (including the trainee name you type for the certificate), your friend-challenge nickname, the levels you design in the level editor, an imported content pack and a log of the last 10 app errors are saved only in the app's local storage on your device. This data is never uploaded by the app.
 
 
 3. Sharing
@@ -20,7 +20,8 @@ Your game progress, stars, coins, upgrades, statistics, achievements, settings a
 Data leaves your device only when you choose to share or export it, using your device's share menu. You decide where it goes:
 - an induction certificate (PDF) or training report (CSV), which include the trainee details you entered;
 - a content pack template (JSON) with the training material only;
-- a result message or a friend challenge code, which contain your chosen nickname, the level and your moves in that run - never your trainee name, employee ID or other progress.
+- a result message or a friend challenge code, which contain your chosen nickname, the level and your moves in that run - never your trainee name, employee ID or other progress;
+- a level editor code, which contains only the layout of a level you designed and the name you gave it.
 - an error report, if the app shows its "Something went wrong" screen. It contains the error message, the screen it happened on, the app version and the Android version. Error details are also kept on your device (last 10 errors) and are removed by Settings > Reset Progress or by uninstalling the app.
 
 

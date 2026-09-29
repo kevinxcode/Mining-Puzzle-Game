@@ -37,12 +37,15 @@ import { Scrim } from '@/components/Scrim';
 import { XPBar } from '@/components/XPBar';
 import { playSfx, updateMusicPlayback } from '@/services/audio';
 import { hapticLight } from '@/services/haptics';
+import { useT } from '@/i18n';
+import { levelDisplayName } from '@/game/levels/levelText';
 
 const bgHome = require('../assets/images/bg-home.png');
 const logo = require('../assets/images/logo.png');
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t, tx } = useT();
   const xp = useProgression((s) => s.xp);
   const coins = useProgression((s) => s.coins);
   const levelRecords = useProgression((s) => s.levels);
@@ -76,26 +79,28 @@ export default function HomeScreen() {
   const dailyDoneToday = modes.daily.lastWinDate === localDateKey();
 
   const menu = [
-    { label: 'CAMPAIGN', detail: `${Object.keys(levelRecords).length} / ${LEVELS.length} levels`, Icon: MapIcon, tint: colors.secondary, path: '/campaign' },
+    { key: 'campaign', label: t('shell.home.campaign'), detail: t('shell.home.campaignDetail', { done: Object.keys(levelRecords).length, total: LEVELS.length }), Icon: MapIcon, tint: colors.secondary, path: '/campaign' },
     {
-      label: 'SITE INDUCTION',
-      detail: training.completed === training.total ? 'Certified' : `${training.completed} / ${training.total} modules`,
+      key: 'induction',
+      label: t('shell.home.induction'),
+      detail: training.completed === training.total ? t('shell.home.inductionCertified') : t('shell.home.inductionDetail', { done: training.completed, total: training.total }),
       Icon: GraduationCap,
       tint: colors.info,
       path: '/induction',
     },
     {
-      label: 'PLAY MODES',
-      detail: dailyDoneToday ? `Daily done · streak ${modes.daily.streak}` : 'Daily challenge ready',
+      key: 'modes',
+      label: t('shell.home.modes'),
+      detail: dailyDoneToday ? t('shell.home.dailyDone', { streak: modes.daily.streak }) : t('shell.home.dailyReady'),
       Icon: CalendarDays,
       tint: colors.info,
       path: '/modes',
     },
-    { label: 'EQUIPMENT', detail: 'Fleet & upgrades', Icon: Wrench, tint: colors.primary, path: '/equipment' },
-    { label: 'SITE HQ', detail: 'Build facilities for bonuses', Icon: Building2, tint: colors.warning, path: '/hq' },
-    { label: 'STATISTICS', detail: 'Career totals', Icon: BarChart3, tint: colors.success, path: '/statistics' },
-    { label: 'ACHIEVEMENTS', detail: 'Milestones', Icon: Trophy, tint: colors.secondary, path: '/achievements' },
-  ] as const;
+    { key: 'equipment', label: t('shell.home.equipment'), detail: t('shell.home.equipmentDetail'), Icon: Wrench, tint: colors.primary, path: '/equipment' },
+    { key: 'hq', label: t('shell.home.hq'), detail: t('shell.home.hqDetail'), Icon: Building2, tint: colors.warning, path: '/hq' },
+    { key: 'statistics', label: t('shell.home.statistics'), detail: t('shell.home.statisticsDetail'), Icon: BarChart3, tint: colors.success, path: '/statistics' },
+    { key: 'achievements', label: t('shell.home.achievements'), detail: t('shell.home.achievementsDetail'), Icon: Trophy, tint: colors.secondary, path: '/achievements' },
+  ];
 
   return (
     <ImageBackground source={bgHome} style={styles.bg} resizeMode="cover">
@@ -114,7 +119,7 @@ export default function HomeScreen() {
             </View>
             <IconButton
               icon={<Settings size={iconSizes.md} color={colors.textOnDark} />}
-              accessibilityLabel="Settings"
+              accessibilityLabel={t('shell.common.settings')}
               onPress={() => go('/settings')}
             />
           </FadeInView>
@@ -123,29 +128,29 @@ export default function HomeScreen() {
           <FadeInView index={1} style={styles.titleBlock}>
             <Image source={logo} style={styles.logo} resizeMode="contain" accessibilityIgnoresInvertColors accessible={false} />
             <Text style={styles.title} accessibilityRole="header">
-              MINING PUZZLE
+              {t('shell.home.title')}
             </Text>
-            <Text style={styles.subtitle}>LOAD · HAUL · DUMP · REPEAT</Text>
+            <Text style={styles.subtitle}>{t('shell.home.tagline')}</Text>
           </FadeInView>
 
           {/* Primary action */}
           <FadeInView index={2}>
             <PrimaryButton
-              label={`CONTINUE · LEVEL ${continueLevel.id}`}
-              accessibilityLabel={`Continue, level ${continueLevel.id}: ${continueLevel.name}`}
+              label={t('shell.home.continue', { id: continueLevel.id })}
+              accessibilityLabel={t('shell.home.continueA11y', { id: continueLevel.id, name: levelDisplayName(continueLevel) })}
               icon={<Play size={iconSizes.md} color={colors.textOnDark} fill={colors.textOnDark} />}
               onPress={() => go(`/level/${continueLevel.id}`)}
               style={styles.continueButton}
             />
             <Text style={styles.continueName} numberOfLines={1}>
-              {continueLevel.name} · {continueLevel.regionName}
+              {levelDisplayName(continueLevel)} · {tx(continueLevel.regionName)}
             </Text>
           </FadeInView>
 
           {/* Menu */}
           <View style={styles.menu}>
             {menu.map((item, i) => (
-              <FadeInView key={item.label} index={3 + i}>
+              <FadeInView key={item.key} index={3 + i}>
                 <PressableScale
                   accessibilityRole="button"
                   accessibilityLabel={`${item.label}, ${item.detail}`}
@@ -167,12 +172,12 @@ export default function HomeScreen() {
 
           {/* Totals */}
           <FadeInView index={9} style={styles.footer}>
-            <View style={styles.footerItem} accessibilityLabel={`${totalStars} stars`}>
+            <View style={styles.footerItem} accessibilityLabel={t('shell.common.starsA11y', { count: totalStars })}>
               <Star size={iconSizes.sm} color={colors.secondary} fill={colors.secondary} />
               <Text style={styles.footerText}>{formatNumber(totalStars)}</Text>
             </View>
             <View style={styles.footerDivider} />
-            <View style={styles.footerItem} accessibilityLabel={`${coins} coins`}>
+            <View style={styles.footerItem} accessibilityLabel={t('shell.common.coinsA11y', { count: coins })}>
               <Coins size={iconSizes.sm} color={colors.primary} />
               <Text style={styles.footerText}>{formatNumber(coins)}</Text>
             </View>

@@ -6,7 +6,7 @@
  * subscribes to its frames with useSyncExternalStore.
  */
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useMemo, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { AppState, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -54,11 +54,15 @@ import { TutorialCoachmark } from '@/components/TutorialCoachmark';
 import { nextRouteAfter, parseModeLevelId, resolveLevel } from '@/game/levels/modeLevels';
 import { buildShareText } from '@/game/share';
 import { isRunLog } from '@/game/replay';
+import { isCustomLevelId } from '@/game/editor/customLevel';
+import { useCustomLevels } from '@/state/customLevelStore';
 import { useChallengeStore } from '@/state/challengeStore';
 import { hqExtraHints } from '@/game/config/siteHq';
 import { computeHint, HINTS_PER_RUN, type Hint, type HintAction } from '@/game/engine/hintEngine';
 import { playSfx } from '@/services/audio';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
+import { useT } from '@/i18n';
+import { levelDisplayName } from '@/game/levels/levelText';
 
 const noopSubscribe = () => () => undefined;
 
@@ -103,8 +107,10 @@ export default function GameRoute() {
 }
 
 function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostSource }) {
+  const { t, tx } = useT();
   const router = useRouter();
-  const level = resolveLevel(levelId);
+  // Resolved once per mount: a stable level object keeps map projections and terrain memoized.
+  const level = useMemo(() => resolveLevel(levelId), [levelId]);
   const savedGhost = useProgression((s) => s.levels[levelId]?.ghost);
   const activeChallenge = useChallengeStore((s) => s.active);
   const ghostLog =
@@ -113,10 +119,11 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
       : ghostMode === 'challenge' && activeChallenge?.levelId === levelId
         ? activeChallenge.log
         : null;
-  const ghostLabel = ghostMode === 'challenge' && activeChallenge ? `${activeChallenge.nickname.toUpperCase()}'S RUN` : 'BEST RUN REPLAY';
+  const ghostLabel = ghostMode === 'challenge' && activeChallenge ? t('game.play.friendRun', { name: activeChallenge.nickname.toUpperCase() }) : t('game.play.bestRunReplay');
 
   const upgrades = useProgression((s) => s.upgrades);
   const recordLevelResult = useProgression((s) => s.recordLevelResult);
+  const recordCustomBest = useCustomLevels((s) => s.recordBest);
   const hq = useProgression((s) => s.hq);
   const hintsPerRun = HINTS_PER_RUN + hqExtraHints(hq);
 
@@ -181,6 +188,22 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
     const simState = sim.state;
     const stars = computeStars(simState, lvl);
     const rewards = computeRewards(simState, lvl, stars);
+    if (isCustomLevelId(lvl.id)) {
+      // Custom levels only keep a personal best — no XP, coins or campaign records.
+      if (status === 'success') {
+        recordCustomBest(lvl.id, { stars, bestScore: rewards.score, bestTimeSeconds: Math.round(simState.elapsed) });
+      }
+      setGrantedRewards({ xp: 0, coins: 0 });
+      sim.markRewarded();
+      if (status === 'success') {
+        playSfx('complete');
+        hapticSuccess();
+      } else {
+        playSfx('fail');
+        hapticWarning();
+      }
+      return;
+    }
     const flags = computeResultFlags(simState, lvl, stars);
     const success = status === 'success';
     const input: LevelResultInput = {
@@ -209,13 +232,13 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
       playSfx('fail');
       hapticWarning();
     }
-  }, [version, controller, level, recordLevelResult, resultRecorded]);
+  }, [version, controller, level, recordLevelResult, recordCustomBest, resultRecorded]);
 
   if (!level || !controller) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
-          <Text style={styles.title}>Level not found</Text>
+          <Text style={styles.title}>{t('game.briefing.notFound')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -274,9 +297,9 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
   };
 
   const shareResult = () => {
-    const isMode = Boolean(parseModeLevelId(level.id));
+    const isMode = Boolean(parseModeLevelId(level.id)) || isCustomLevelId(level.id);
     const message = buildShareText({
-      levelTitle: isMode ? level.name : `Level ${level.id} · ${level.regionName}`,
+      levelTitle: isMode ? levelDisplayName(level) : t('game.play.shareTitle', { id: level.id, region: tx(level.regionName) }),
       success: state.status === 'success',
       stars: state.status === 'success' ? projectedStars : 0,
       tons: state.stats.tonsMoved,
@@ -299,7 +322,7 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
         <View style={styles.headerRow}>
           <IconButton
             icon={<ChevronLeft size={20} color={colors.textOnDark} />}
-            accessibilityLabel="Exit level"
+            accessibilityLabel={t('game.play.exit')}
             onPress={() => {
               controller.pause();
               router.back();
@@ -307,7 +330,7 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
           />
           <View style={styles.headerFill}>
             <MissionHeader
-              levelName={level.name}
+              levelName={levelDisplayName(level)}
               regionName={level.regionName}
               tonsMoved={state.stats.tonsMoved}
               targetTons={state.targetTons}
@@ -343,7 +366,7 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
               disabled={hintsLeft === 0 || finished}
               onPress={showHint}
               accessibilityRole="button"
-              accessibilityLabel={`Hint, ${hintsLeft} left`}
+              accessibilityLabel={t('game.play.hintA11y', { count: hintsLeft })}
             >
               <Lightbulb size={iconSizes.sm} color={colors.secondary} />
               <Text style={styles.toolCount}>{hintsLeft}</Text>
@@ -353,7 +376,7 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
               disabled={!controller.canUndo || finished}
               onPress={undoMove}
               accessibilityRole="button"
-              accessibilityLabel="Undo last move"
+              accessibilityLabel={t('game.play.undoA11y')}
             >
               <Undo2 size={iconSizes.sm} color={colors.textOnDark} />
             </PressableScale>
@@ -386,11 +409,11 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
               <Lightbulb size={iconSizes.sm} color={colors.secondary} />
               <Text style={styles.hintText}>{hint.message}</Text>
               {hint.action ? (
-                <PressableScale style={styles.hintApply} onPress={() => applyHint(hint.action!)} accessibilityRole="button" accessibilityLabel="Apply hint">
-                  <Text style={styles.hintApplyText}>APPLY</Text>
+                <PressableScale style={styles.hintApply} onPress={() => applyHint(hint.action!)} accessibilityRole="button" accessibilityLabel={t('game.play.applyHintA11y')}>
+                  <Text style={styles.hintApplyText}>{t('game.play.apply')}</Text>
                 </PressableScale>
               ) : null}
-              <PressableScale onPress={() => setHint(null)} accessibilityRole="button" accessibilityLabel="Close hint" hitSlop={10}>
+              <PressableScale onPress={() => setHint(null)} accessibilityRole="button" accessibilityLabel={t('game.play.closeHintA11y')} hitSlop={10}>
                 <X size={iconSizes.sm} color={colors.textOnDarkMuted} />
               </PressableScale>
             </Animated.View>
@@ -414,14 +437,14 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
       <View style={[styles.controlBar, shadows.raised]}>
         <BarButton
           icon={<Truck size={iconSizes.md} color={colors.textOnDark} />}
-          label="Fleet"
-          accessibilityLabel="Equipment"
+          label={t('game.play.fleet')}
+          accessibilityLabel={t('game.play.equipment')}
           onPress={() => setSheetOpen(true)}
         />
         <BarButton
           icon={<RouteIcon size={iconSizes.md} color={colors.textOnDark} />}
-          label="Routes"
-          accessibilityLabel="Routes"
+          label={t('game.play.routes')}
+          accessibilityLabel={t('game.play.routes')}
           onPress={() => {
             setSelectedTruckId(selectedTruckId ?? state.trucks[0]?.id ?? null);
             setRouteSheetOpen(true);
@@ -430,20 +453,20 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
         <BarButton
           icon={<FastForward size={iconSizes.md} color={state.speed > 1 ? colors.secondary : colors.textOnDark} />}
           label={`${state.speed}x`}
-          accessibilityLabel={`Simulation speed ${state.speed}x — tap to change`}
+          accessibilityLabel={t('game.play.speedA11y', { speed: state.speed })}
           onPress={cycleSpeed}
         />
         {ghostLog && finished ? (
           <PrimaryButton
-            label="WATCH AGAIN"
+            label={t('game.play.watchAgain')}
             icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />}
             onPress={() => controller.reset()}
             style={styles.startButton}
           />
         ) : ready ? (
           <PrimaryButton
-            label={ghostLog ? 'WATCH' : 'START'}
-            accessibilityLabel="Start operation"
+            label={ghostLog ? t('game.play.watch') : t('game.play.start')}
+            accessibilityLabel={t('game.play.startA11y')}
             icon={<Play size={iconSizes.sm} color={colors.textOnDark} fill={colors.textOnDark} />}
             onPress={() => {
               controller.start();
@@ -453,7 +476,7 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
           />
         ) : (
           <PrimaryButton
-            label={state.status === 'paused' ? 'RESUME' : 'PAUSE'}
+            label={state.status === 'paused' ? t('game.play.resume') : t('game.play.pause')}
             variant={state.status === 'paused' ? 'primary' : 'ghost'}
             icon={
               state.status === 'paused' ? (
@@ -510,11 +533,11 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
       {/* Result overlay */}
       {ghostLog && finished ? (
         <Animated.View entering={FadeInUp} style={styles.ghostEnd}>
-          <Text style={styles.ghostEndTitle}>Replay finished</Text>
+          <Text style={styles.ghostEndTitle}>{t('game.play.replayFinished')}</Text>
           <Text style={styles.hintText}>
-            {Math.round(state.stats.tonsMoved)} / {state.targetTons} t in {Math.round(state.elapsed)} s · {computeEfficiency(state)}% efficiency
+            {t('game.play.replaySummary', { tons: Math.round(state.stats.tonsMoved), target: state.targetTons, seconds: Math.round(state.elapsed), efficiency: computeEfficiency(state) })}
           </Text>
-          <PrimaryButton label="PLAY THIS LEVEL" onPress={() => router.replace(`/game/${level.id}` as never)} />
+          <PrimaryButton label={t('game.play.playThisLevel')} onPress={() => router.replace(`/game/${level.id}` as never)} />
         </Animated.View>
       ) : null}
       <MissionResult
@@ -529,6 +552,8 @@ function GameScreen({ levelId, ghostMode }: { levelId: string; ghostMode: GhostS
         maxQueueSeconds={state.stats.maxQueueTime}
         xpGain={grantedRewards?.xp ?? 0}
         coinsGain={grantedRewards?.coins ?? 0}
+        rewardNote={isCustomLevelId(level.id) ? t('editor.result.custom') : undefined}
+        nextLabel={isCustomLevelId(level.id) ? t('editor.result.back') : undefined}
         issue={failure.issue}
         tip={failure.tip}
         onNext={nextLevel}

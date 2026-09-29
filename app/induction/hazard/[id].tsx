@@ -25,6 +25,7 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { playSfx } from '@/services/audio';
 import { hapticSuccess, hapticWarning } from '@/services/haptics';
+import { useT } from '@/i18n';
 
 interface Miss {
   x: number;
@@ -33,6 +34,7 @@ interface Miss {
 
 export default function HazardSpotScreen() {
   const router = useRouter();
+  const { t, tx, tn } = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const scene = getHazardScene(String(id));
   const recordHazardRun = useProgression((s) => s.recordHazardRun);
@@ -46,7 +48,7 @@ export default function HazardSpotScreen() {
   if (!scene) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ScreenHeader title="Scene not found" />
+        <ScreenHeader title={t('induction.hazard.notFound')} />
       </SafeAreaView>
     );
   }
@@ -96,9 +98,9 @@ export default function HazardSpotScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScreenHeader title={scene.title} subtitle={`Hazards found ${found.length} / ${total}`} />
+      <ScreenHeader title={tx(scene.title)} subtitle={t('induction.hazard.found', { found: found.length, total })} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.brief}>{scene.brief}</Text>
+        <Text style={styles.brief}>{tx(scene.brief)}</Text>
 
         <View
           style={[styles.sceneWrap, shadows.soft, { height: width * (SCENE_HEIGHT / SCENE_WIDTH) }]}
@@ -108,7 +110,7 @@ export default function HazardSpotScreen() {
             style={StyleSheet.absoluteFill}
             onPress={(e) => onTap(e.nativeEvent.locationX, e.nativeEvent.locationY)}
             accessibilityRole="imagebutton"
-            accessibilityLabel={`${scene.title} scene. Tap the hazards. ${found.length} of ${total} found.`}
+            accessibilityLabel={t('induction.hazard.sceneA11y', { title: tx(scene.title), found: found.length, total })}
           >
             {width > 0 ? (
               <Svg width={width} height={width * (SCENE_HEIGHT / SCENE_WIDTH)} viewBox={`0 0 ${SCENE_WIDTH} ${SCENE_HEIGHT}`}>
@@ -142,7 +144,7 @@ export default function HazardSpotScreen() {
 
         <View style={styles.meta}>
           <Text style={styles.metaText}>
-            Wrong taps: {misses.length} / {HAZARD_MAX_MISSES} allowed
+            {t('induction.hazard.wrongTaps', { misses: misses.length, max: HAZARD_MAX_MISSES })}
           </Text>
         </View>
 
@@ -150,8 +152,8 @@ export default function HazardSpotScreen() {
           <Animated.View key={last.id} entering={FadeInUp} style={[styles.card, styles.foundCard]}>
             <CheckCircle2 size={iconSizes.sm} color={colors.success} />
             <View style={styles.flex}>
-              <Text style={styles.cardTitle}>{last.title}</Text>
-              <Text style={styles.cardBody}>{last.explanation}</Text>
+              <Text style={styles.cardTitle}>{tx(last.title)}</Text>
+              <Text style={styles.cardBody}>{tx(last.explanation)}</Text>
             </View>
           </Animated.View>
         ) : null}
@@ -165,9 +167,9 @@ export default function HazardSpotScreen() {
                 <ShieldAlert size={iconSizes.md} color={colors.warning} />
               )}
               <View style={styles.flex}>
-                <Text style={styles.cardTitle}>{passed ? 'Scene cleared' : 'Not yet — review and try again'}</Text>
+                <Text style={styles.cardTitle}>{passed ? t('induction.hazard.cleared') : t('induction.notYet')}</Text>
                 <Text style={styles.cardBody}>
-                  Found {found.length} of {total} hazards with {misses.length} wrong tap{misses.length === 1 ? '' : 's'}.
+                  {tn('induction.hazard.summary_one', 'induction.hazard.summary_other', misses.length, { found: found.length, total })}
                 </Text>
               </View>
             </View>
@@ -181,21 +183,21 @@ export default function HazardSpotScreen() {
                     <XCircle size={iconSizes.sm} color={colors.danger} />
                   )}
                   <View style={styles.flex}>
-                    <Text style={styles.reviewTitle}>{h.title}</Text>
-                    <Text style={styles.cardBody}>{h.explanation}</Text>
+                    <Text style={styles.reviewTitle}>{tx(h.title)}</Text>
+                    <Text style={styles.cardBody}>{tx(h.explanation)}</Text>
                   </View>
                 </View>
               );
             })}
-            <PrimaryButton label="TRY AGAIN" icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />} onPress={retry} />
-            <PrimaryButton label="BACK TO INDUCTION" variant="outline" onPress={() => router.back()} />
+            <PrimaryButton label={t('induction.tryAgain')} icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />} onPress={retry} />
+            <PrimaryButton label={t('induction.backToInduction')} variant="outline" onPress={() => router.back()} />
           </Animated.View>
         ) : (
           <PrimaryButton
-            label="I'M DONE — SHOW ANSWERS"
+            label={t('induction.hazard.done')}
             variant="outline"
             onPress={() => finish(found, misses)}
-            accessibilityHint="Ends the scene and reveals any hazards you missed"
+            accessibilityHint={t('induction.hazard.doneHint')}
           />
         )}
       </ScrollView>

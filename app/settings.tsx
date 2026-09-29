@@ -9,15 +9,19 @@ import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 're
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronRight, Info, Music, RotateCcw, Shield, Smartphone, Volume2 } from 'lucide-react-native';
+import { Check, ChevronRight, Globe, Info, Music, RotateCcw, Shield, Smartphone, Volume2 } from 'lucide-react-native';
 import { colors, iconSizes, layout, minTouchTarget, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { useProgression } from '@/state/progressionStore';
 import { setMusicEnabled } from '@/services/audio';
 import { FadeInView } from '@/components/FadeInView';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { LANGUAGES, useLanguageStore, useT } from '@/i18n';
 
 export default function SettingsScreen() {
+  const { t } = useT();
+  const language = useLanguageStore((s) => s.language);
+  const setLanguage = useLanguageStore((s) => s.setLanguage);
   const settings = useProgression((s) => s.settings);
   const toggleSetting = useProgression((s) => s.toggleSetting);
   const resetProgress = useProgression((s) => s.resetProgress);
@@ -26,10 +30,10 @@ export default function SettingsScreen() {
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   const confirmReset = () => {
-    Alert.alert('Reset Progress', 'This deletes all progress, stars, coins, upgrades, induction records, your nickname and the error log. An imported content pack is kept. Continue?', [
-      { text: 'Cancel', style: 'cancel', onPress: () => setResetting(false) },
+    Alert.alert(t('shell.settings.resetTitle'), t('shell.settings.resetMessage'), [
+      { text: t('shell.settings.cancel'), style: 'cancel', onPress: () => setResetting(false) },
       {
-        text: 'Reset',
+        text: t('shell.settings.reset'),
         style: 'destructive',
         onPress: () => {
           resetProgress();
@@ -44,14 +48,39 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScreenHeader title="Settings" />
+      <ScreenHeader title={t('shell.settings.title')} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.sectionLabel}>AUDIO & FEEDBACK</Text>
+        <Text style={styles.sectionLabel}>{t('shell.settings.language')}</Text>
         <FadeInView style={styles.card}>
+          {LANGUAGES.map((lang) => {
+            const selected = language === lang.id;
+            return (
+              <Pressable
+                key={lang.id}
+                style={styles.settingRow}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected }}
+                accessibilityLabel={lang.label}
+                onPress={() => setLanguage(lang.id)}
+              >
+                <View style={styles.settingIcon}>
+                  <Globe size={iconSizes.sm} color={selected ? colors.primary : colors.textMuted} />
+                </View>
+                <Text style={[styles.settingLabel, styles.flex]}>{lang.label}</Text>
+                <View style={[styles.radio, selected && styles.radioOn]}>
+                  {selected ? <Check size={iconSizes.xs} color={colors.textOnDark} /> : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </FadeInView>
+
+        <Text style={styles.sectionLabel}>{t('shell.settings.audio')}</Text>
+        <FadeInView index={1} style={styles.card}>
           <SettingRow
             icon={<Music size={iconSizes.sm} color={colors.primary} />}
-            label="Music"
-            description="Soft ambient site audio"
+            label={t('shell.settings.music')}
+            description={t('shell.settings.musicDesc')}
             value={settings.music}
             onToggle={() => {
               toggleSetting('music');
@@ -60,51 +89,47 @@ export default function SettingsScreen() {
           />
           <SettingRow
             icon={<Volume2 size={iconSizes.sm} color={colors.info} />}
-            label="Sound Effects"
-            description="Button taps, rewards and alerts"
+            label={t('shell.settings.sfx')}
+            description={t('shell.settings.sfxDesc')}
             value={settings.sfx}
             onToggle={() => toggleSetting('sfx')}
           />
           <SettingRow
             icon={<Smartphone size={iconSizes.sm} color={colors.success} />}
-            label="Haptics"
-            description="Vibration feedback"
+            label={t('shell.settings.haptics')}
+            description={t('shell.settings.hapticsDesc')}
             value={settings.haptics}
             onToggle={() => toggleSetting('haptics')}
           />
         </FadeInView>
 
-        <Text style={styles.sectionLabel}>ABOUT</Text>
-        <FadeInView index={1} style={styles.card}>
+        <Text style={styles.sectionLabel}>{t('shell.settings.about')}</Text>
+        <FadeInView index={2} style={styles.card}>
           <View style={styles.aboutHeader}>
             <Info size={iconSizes.sm} color={colors.textMuted} />
             <Text style={styles.aboutTitle}>Mining Puzzle Game</Text>
           </View>
-          <Text style={styles.aboutText}>
-            A fictional logistics puzzle game about running a small mining operation. Manage
-            excavators, dump trucks, routes and fuel to hit production targets before the shift
-            ends. The Site Induction track is generic training content, not any real site’s procedures.
-          </Text>
-          <Text style={styles.aboutVersion}>Version {appVersion}</Text>
+          <Text style={styles.aboutText}>{t('shell.settings.aboutText')}</Text>
+          <Text style={styles.aboutVersion}>{t('shell.settings.version', { version: appVersion })}</Text>
           <Pressable
             style={styles.linkRow}
             accessibilityRole="link"
-            accessibilityLabel="Privacy policy"
+            accessibilityLabel={t('shell.settings.privacyA11y')}
             onPress={() => router.push('/privacy')}
           >
             <Shield size={iconSizes.sm} color={colors.info} />
-            <Text style={styles.linkText}>Privacy Policy</Text>
+            <Text style={styles.linkText}>{t('shell.settings.privacy')}</Text>
             <ChevronRight size={iconSizes.sm} color={colors.textMuted} />
           </Pressable>
         </FadeInView>
 
-        <Text style={styles.sectionLabel}>DANGER ZONE</Text>
-        <FadeInView index={2}>
+        <Text style={styles.sectionLabel}>{t('shell.settings.danger')}</Text>
+        <FadeInView index={3}>
           <PrimaryButton
-            label="RESET PROGRESS"
+            label={t('shell.settings.resetButton')}
             variant="danger"
             icon={<RotateCcw size={iconSizes.sm} color={colors.textOnDark} />}
-            accessibilityHint="Deletes all progress after confirmation"
+            accessibilityHint={t('shell.settings.resetHint')}
             onPress={confirmReset}
             disabled={resetting}
           />
@@ -146,6 +171,17 @@ function SettingRow({
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  radio: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    borderColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',

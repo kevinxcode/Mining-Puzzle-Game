@@ -25,6 +25,7 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { playSfx } from '@/services/audio';
 import { hapticSuccess } from '@/services/haptics';
+import { useT } from '@/i18n';
 
 const ICONS: Record<FacilityId, ReactNode> = {
   workshop: <Wrench size={iconSizes.md} color={colors.primary} />,
@@ -33,6 +34,7 @@ const ICONS: Record<FacilityId, ReactNode> = {
 };
 
 export default function SiteHqScreen() {
+  const { t, tx } = useT();
   const coins = useProgression((s) => s.coins);
   const hq = useProgression((s) => s.hq);
   const buildFacility = useProgression((s) => s.buildFacility);
@@ -47,10 +49,10 @@ export default function SiteHqScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScreenHeader
-        title="Site HQ"
-        subtitle="Facilities & bonuses"
+        title={t('shell.hq.title')}
+        subtitle={t('shell.hq.subtitle')}
         right={
-          <View style={[styles.coinsBadge, shadows.soft]} accessibilityLabel={`${coins} coins`}>
+          <View style={[styles.coinsBadge, shadows.soft]} accessibilityLabel={t('shell.common.coinsA11y', { count: coins })}>
             <Coins size={iconSizes.xs} color={colors.primary} />
             <Text style={styles.coinsText}>{formatNumber(coins)}</Text>
           </View>
@@ -58,30 +60,31 @@ export default function SiteHqScreen() {
       />
       <ScrollView contentContainerStyle={styles.content}>
         <FadeInView style={[styles.summary, shadows.soft]}>
-          <Bonus label="Hints / mission" value={`${HINTS_PER_RUN + hqExtraHints(hq)}`} />
-          <Bonus label="XP bonus" value={`+${Math.round((hqXpMultiplier(hq) - 1) * 100)}%`} />
-          <Bonus label="Coin bonus" value={`+${Math.round((hqCoinMultiplier(hq) - 1) * 100)}%`} />
+          <Bonus label={t('shell.hq.hints')} value={`${HINTS_PER_RUN + hqExtraHints(hq)}`} />
+          <Bonus label={t('shell.hq.xp')} value={`+${Math.round((hqXpMultiplier(hq) - 1) * 100)}%`} />
+          <Bonus label={t('shell.hq.coins')} value={`+${Math.round((hqCoinMultiplier(hq) - 1) * 100)}%`} />
         </FadeInView>
 
         {HQ_FACILITIES.map((f, i) => {
           const level = facilityLevel(hq, f.id);
           const cost = nextFacilityCost(hq, f);
+          const name = tx(f.name);
           return (
             <FadeInView key={f.id} index={i + 1} style={[styles.card, shadows.soft]}>
               <View style={styles.icon}>{ICONS[f.id]}</View>
               <View style={styles.info}>
-                <Text style={styles.name}>{f.name}</Text>
-                <Text style={styles.desc}>{f.description}</Text>
-                <View style={styles.pips} accessible accessibilityLabel={`Level ${level} of ${f.costs.length}`}>
+                <Text style={styles.name}>{name}</Text>
+                <Text style={styles.desc}>{tx(f.description)}</Text>
+                <View style={styles.pips} accessible accessibilityLabel={t('shell.common.levelOf', { level, max: f.costs.length })}>
                   {f.costs.map((_, p) => (
                     <View key={p} style={[styles.pip, p < level && styles.pipOn]} />
                   ))}
                 </View>
               </View>
               <PrimaryButton
-                label={cost === null ? 'MAX' : `${cost}`}
+                label={cost === null ? t('shell.common.max') : `${cost}`}
                 accessibilityLabel={
-                  cost === null ? `${f.name} fully built` : `Build ${f.name} level ${level + 1} for ${cost} coins`
+                  cost === null ? t('shell.hq.builtA11y', { name }) : t('shell.hq.buildA11y', { name, level: level + 1, cost })
                 }
                 icon={cost === null ? undefined : <Coins size={iconSizes.xs} color={colors.textOnDark} />}
                 disabled={cost === null || coins < cost}
@@ -92,7 +95,7 @@ export default function SiteHqScreen() {
           );
         })}
         <Text style={styles.note}>
-          Bonuses apply to campaign and play-mode rewards. Mission rules and truck performance never change.
+          {t('shell.hq.note')}
         </Text>
       </ScrollView>
     </SafeAreaView>

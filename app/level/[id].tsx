@@ -37,8 +37,11 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { StarRating } from '@/components/StarRating';
 import { playSfx } from '@/services/audio';
 import { hapticMedium } from '@/services/haptics';
+import { useT } from '@/i18n';
+import { levelDescription, levelDisplayName, objectiveText } from '@/game/levels/levelText';
 
 export default function BriefingScreen() {
+  const { t, tx, tn } = useT();
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const level = resolveLevel(String(params.id));
@@ -51,7 +54,7 @@ export default function BriefingScreen() {
   if (!level) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ScreenHeader title="Level not found" />
+        <ScreenHeader title={t('game.briefing.notFound')} />
       </SafeAreaView>
     );
   }
@@ -59,8 +62,8 @@ export default function BriefingScreen() {
   const record = levelRecords[level.id];
   const shareChallenge = () => {
     if (!record?.ghost) return;
-    const code = encodeChallenge({ levelId: level.id, nickname: nickname || 'Player', log: record.ghost });
-    const message = `Beat my run on Mining Puzzle Game — Level ${level.id} · ${level.name} (${record.bestScore} pts).\n\nOpen Play Modes → Friend Challenge and paste this code:\n${code}`;
+    const code = encodeChallenge({ levelId: level.id, nickname: nickname || t('game.briefing.defaultNickname'), log: record.ghost });
+    const message = t('game.briefing.shareMessage', { id: level.id, name: levelDisplayName(level), score: record.bestScore, code });
     Share.share({ message }).catch(() => undefined);
   };
   const modeRef = parseModeLevelId(level.id);
@@ -87,57 +90,57 @@ export default function BriefingScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScreenHeader
-        title={modeRef ? (modeRef.mode === 'daily' ? 'Daily Challenge' : modeRef.mode === 'weekly' ? 'Weekly Challenge' : `Endless · Shift ${modeRef.shift}`) : `Level ${level.id}`}
-        subtitle={level.regionName}
+        title={modeRef ? (modeRef.mode === 'daily' ? t('game.briefing.daily') : modeRef.mode === 'weekly' ? t('game.briefing.weekly') : t('game.briefing.endless', { shift: modeRef.shift })) : t('game.briefing.level', { id: level.id })}
+        subtitle={tx(level.regionName)}
         right={<StarRating count={record?.stars ?? 0} size={iconSizes.sm} />}
       />
       <ScrollView contentContainerStyle={styles.container}>
         <FadeInView style={[styles.hero, shadows.raised]}>
           <View style={[styles.heroAccent, { backgroundColor: accent }]} />
-          <Text style={styles.region}>{level.regionName.toUpperCase()}</Text>
+          <Text style={styles.region}>{tx(level.regionName).toUpperCase()}</Text>
           <Text style={styles.title} accessibilityRole="header">
-            {level.name}
+            {levelDisplayName(level)}
           </Text>
-          <Text style={styles.description}>{level.description}</Text>
+          <Text style={styles.description}>{levelDescription(level)}</Text>
           <View style={styles.chips}>
-            <Chip icon={<Target size={iconSizes.sm} color={colors.primary} />} value={`${level.targetTons} t`} label="Target" />
-            <Chip icon={<Clock size={iconSizes.sm} color={colors.info} />} value={formatClock(level.timeLimit)} label="Time" />
+            <Chip icon={<Target size={iconSizes.sm} color={colors.primary} />} value={`${level.targetTons} t`} label={t('game.briefing.target')} />
+            <Chip icon={<Clock size={iconSizes.sm} color={colors.info} />} value={formatClock(level.timeLimit)} label={t('game.briefing.time')} />
             <Chip
               icon={<Truck size={iconSizes.sm} color={colors.warning} />}
               value={`${level.trucks.length}`}
-              label={level.trucks.length === 1 ? 'Truck' : 'Trucks'}
+              label={tn('game.briefing.truck_one', 'game.briefing.truck_other', level.trucks.length)}
             />
             <Chip
               icon={<Pickaxe size={iconSizes.sm} color={colors.success} />}
               value={`${level.excavators.length}`}
-              label={level.excavators.length === 1 ? 'Loader' : 'Loaders'}
+              label={tn('game.briefing.loader_one', 'game.briefing.loader_other', level.excavators.length)}
             />
           </View>
           {hasFuelStation ? (
             <View style={styles.notice}>
               <Fuel size={iconSizes.sm} color={colors.info} />
-              <Text style={styles.noticeText}>Fuel station on site — plan your refuels.</Text>
+              <Text style={styles.noticeText}>{t('game.briefing.fuelNotice')}</Text>
             </View>
           ) : null}
         </FadeInView>
 
         {modeRef ? (
           <FadeInView index={1}>
-            <Section icon={<Truck size={iconSizes.sm} color={colors.info} />} label="CHOOSE YOUR FLEET">
+            <Section icon={<Truck size={iconSizes.sm} color={colors.info} />} label={t('game.briefing.chooseFleet')}>
               <Text style={styles.fleetHint}>
-                Swap every truck to one of your unlocked classes. Unlock more in the campaign.
+                {t('game.briefing.fleetHint')}
               </Text>
               <View style={styles.fleetChips}>
                 {[undefined, ...fleetChoices].map((cls) => {
                   const active = modeRef.fleetClass === cls;
-                  const label = cls ? TRUCK_CLASSES[cls].name : 'Mission fleet';
+                  const label = cls ? tx(TRUCK_CLASSES[cls].name) : t('game.briefing.missionFleet');
                   return (
                     <PressableScale
                       key={cls ?? 'default'}
                       onPress={() => chooseFleet(cls)}
                       accessibilityRole="button"
                       accessibilityState={{ selected: active }}
-                      accessibilityLabel={`Fleet: ${label}`}
+                      accessibilityLabel={t('game.briefing.fleetA11y', { label })}
                       style={[styles.fleetChip, active && styles.fleetChipActive]}
                     >
                       <Text style={[styles.fleetChipText, active && styles.fleetChipTextActive]}>{label}</Text>
@@ -152,10 +155,10 @@ export default function BriefingScreen() {
 
         {challenge.length > 0 ? (
           <FadeInView index={1}>
-            <Section icon={<Zap size={iconSizes.sm} color={colors.warning} />} label="CHALLENGE">
+            <Section icon={<Zap size={iconSizes.sm} color={colors.warning} />} label={t('game.briefing.challenge')}>
               {challenge.map((o) => (
                 <Text key={o.id} style={styles.value}>
-                  {o.description}
+                  {objectiveText(o)}
                 </Text>
               ))}
             </Section>
@@ -164,10 +167,10 @@ export default function BriefingScreen() {
 
         {bonus.length > 0 ? (
           <FadeInView index={2}>
-            <Section icon={<Gift size={iconSizes.sm} color={colors.primary} />} label="BONUS">
+            <Section icon={<Gift size={iconSizes.sm} color={colors.primary} />} label={t('game.briefing.bonus')}>
               {bonus.map((o) => (
                 <Text key={o.id} style={styles.value}>
-                  {o.description}
+                  {objectiveText(o)}
                 </Text>
               ))}
             </Section>
@@ -178,13 +181,13 @@ export default function BriefingScreen() {
           <PressableScale
             accessibilityRole="button"
             accessibilityState={{ expanded: fleetOpen }}
-            accessibilityLabel={fleetOpen ? 'Hide fleet details' : 'Show fleet details'}
+            accessibilityLabel={fleetOpen ? t('game.briefing.hideFleet') : t('game.briefing.showFleet')}
             onPress={() => setFleetOpen(!fleetOpen)}
             style={[styles.section, shadows.soft]}
           >
             <View style={styles.sectionHeader}>
               <Truck size={iconSizes.sm} color={colors.textMuted} />
-              <Text style={styles.sectionLabel}>FLEET DETAILS</Text>
+              <Text style={styles.sectionLabel}>{t('game.briefing.fleetDetails')}</Text>
               {fleetOpen ? (
                 <ChevronUp size={iconSizes.sm} color={colors.textMuted} />
               ) : (
@@ -193,14 +196,14 @@ export default function BriefingScreen() {
             </View>
             {fleetOpen ? (
               <View style={styles.sectionBody}>
-                {level.trucks.map((t) => (
-                  <Text key={t.id} style={styles.value}>
-                    {`${t.name} — ${t.truckClass}, ${t.capacity} t`}
+                {level.trucks.map((tr) => (
+                  <Text key={tr.id} style={styles.value}>
+                    {t('game.briefing.truckLine', { name: tx(tr.name), cls: tx(tr.truckClass), capacity: tr.capacity })}
                   </Text>
                 ))}
                 {level.excavators.map((e) => (
                   <Text key={e.id} style={styles.value}>
-                    {`${e.name} — ${e.bucketCapacity} t bucket, ${e.loadingSpeed.toFixed(1)} t/s`}
+                    {t('game.briefing.excavatorLine', { name: tx(e.name), bucket: e.bucketCapacity, speed: e.loadingSpeed.toFixed(1) })}
                   </Text>
                 ))}
               </View>
@@ -211,24 +214,24 @@ export default function BriefingScreen() {
       <View style={styles.footer}>
         {record?.ghost ? (
           <PrimaryButton
-            label="SHARE CHALLENGE"
+            label={t('game.briefing.shareChallenge')}
             variant="outline"
-            accessibilityLabel="Share this run as a challenge code"
+            accessibilityLabel={t('game.briefing.shareA11y')}
             icon={<Share2 size={iconSizes.sm} color={colors.primary} />}
             onPress={shareChallenge}
           />
         ) : null}
         {record?.ghost ? (
           <PrimaryButton
-            label="WATCH BEST RUN"
+            label={t('game.briefing.watchBest')}
             variant="outline"
-            accessibilityLabel={`Watch your best run, score ${record.bestScore}`}
+            accessibilityLabel={t('game.briefing.watchBestA11y', { score: record.bestScore })}
             icon={<Ghost size={iconSizes.sm} color={colors.primary} />}
             onPress={() => router.push(`/game/${level.id}?ghost=1` as never)}
           />
         ) : null}
         <PrimaryButton
-          label="START MISSION"
+          label={t('game.briefing.start')}
           icon={<Play size={iconSizes.md} color={colors.textOnDark} fill={colors.textOnDark} />}
           onPress={start}
           style={styles.startButton}

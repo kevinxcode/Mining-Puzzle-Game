@@ -27,6 +27,7 @@ import {
 } from 'lucide-react-native';
 import type { InductionArt as ArtId, InductionModule } from '@/game/induction/types';
 import { colors, radius, typography } from '@/theme/tokens';
+import { useT, type t as TFn } from '@/i18n';
 
 const ART_HEIGHT = 150;
 const W = 280;
@@ -58,6 +59,7 @@ const ICONS = {
 } as const;
 
 export function InductionArt({ art }: { art: ArtId }) {
+  const { t } = useT();
   if (art in ICONS) {
     const { Icon, tint, color } = ICONS[art as keyof typeof ICONS];
     return (
@@ -71,7 +73,7 @@ export function InductionArt({ art }: { art: ArtId }) {
   return (
     <View style={styles.frame} accessible={false}>
       <Svg width="100%" height={ART_HEIGHT} viewBox={`0 0 ${W} ${H}`}>
-        {renderDiagram(art)}
+        {renderDiagram(art, t)}
       </Svg>
     </View>
   );
@@ -89,15 +91,19 @@ function MiniTruck({ x, y, loaded, color = colors.secondary }: { x: number; y: n
   );
 }
 
-function Label({ x, y, text, color = colors.text }: { x: number; y: number; text: string; color?: string }) {
+/** `fit`: max width in viewBox units — longer (translated) words shrink to stay inside their shape. */
+function Label({ x, y, text, color = colors.text, fit }: { x: number; y: number; text: string; color?: string; fit?: number }) {
+  const base = typography.tiny.fontSize + 1;
+  // Bold caps average ~0.68 em per character.
+  const fontSize = fit ? Math.min(base, fit / Math.max(1, text.length * 0.68)) : base;
   return (
-    <SvgText x={x} y={y} fontSize={typography.tiny.fontSize + 1} fontWeight="700" fill={color} textAnchor="middle">
+    <SvgText x={x} y={y} fontSize={fontSize} fontWeight="700" fill={color} textAnchor="middle">
       {text}
     </SvgText>
   );
 }
 
-function renderDiagram(art: ArtId) {
+function renderDiagram(art: ArtId, t: typeof TFn) {
   switch (art) {
     case 'diagram-cycle':
       return (
@@ -105,13 +111,13 @@ function renderDiagram(art: ArtId) {
           <Rect x={50} y={30} width={180} height={90} rx={45} fill="none" stroke={colors.mapRoad} strokeWidth={14} />
           <Rect x={50} y={30} width={180} height={90} rx={45} fill="none" stroke={colors.mapRoadActive} strokeWidth={2} strokeDasharray="6 6" />
           <Circle cx={50} cy={75} r={18} fill={colors.primary} />
-          <Label x={50} y={79} text="LOAD" color={colors.textOnDark} />
+          <Label x={50} y={79} text={t('induction.art.load')} color={colors.textOnDark} fit={32} />
           <Circle cx={230} cy={75} r={18} fill={colors.info} />
-          <Label x={230} y={79} text="DUMP" color={colors.textOnDark} />
+          <Label x={230} y={79} text={t('induction.art.dump')} color={colors.textOnDark} fit={32} />
           <MiniTruck x={120} y={13} loaded />
-          <Label x={140} y={60} text="HAUL →" />
+          <Label x={140} y={60} text={t('induction.art.haul')} />
           <MiniTruck x={120} y={108} />
-          <Label x={140} y={100} text="← RETURN" />
+          <Label x={140} y={100} text={t('induction.art.return')} />
         </G>
       );
     case 'diagram-passes':
@@ -127,7 +133,7 @@ function renderDiagram(art: ArtId) {
           <Circle cx={180} cy={112} r={9} fill={colors.surface} />
           <Path d="M230 20 L200 40 L150 34" stroke={colors.surfaceElevated} strokeWidth={6} fill="none" strokeLinecap="round" />
           <Path d="M130 30 L152 26 L150 46 Z" fill={colors.primary} />
-          <Label x={100} y={52} text="PASS 3 OF 4" />
+          <Label x={100} y={52} text={t('induction.art.pass')} />
         </G>
       );
     case 'diagram-queue':
@@ -135,13 +141,13 @@ function renderDiagram(art: ArtId) {
         <G>
           <Rect x={10} y={88} width={260} height={16} fill={colors.mapRoad} />
           <Circle cx={240} cy={70} r={22} fill={colors.primary} />
-          <Label x={240} y={74} text="LOADER" color={colors.textOnDark} />
+          <Label x={240} y={74} text={t('induction.art.loader')} color={colors.textOnDark} fit={32} />
           <MiniTruck x={180} y={74} color={colors.success} />
           <MiniTruck x={130} y={74} color={colors.warning} />
           <MiniTruck x={80} y={74} color={colors.warning} />
           <MiniTruck x={30} y={74} color={colors.warning} />
-          <Label x={90} y={60} text="WAITING = IDLE" color={colors.warning} />
-          <Label x={198} y={124} text="LOADING" color={colors.success} />
+          <Label x={90} y={60} text={t('induction.art.waiting')} color={colors.warning} />
+          <Label x={198} y={124} text={t('induction.art.loading')} color={colors.success} />
         </G>
       );
     case 'diagram-routes':
@@ -153,8 +159,8 @@ function renderDiagram(art: ArtId) {
           <Circle cx={250} cy={110} r={14} fill={colors.info} />
           <Circle cx={120} cy={110} r={8} fill={colors.overburden} />
           <Circle cx={150} cy={110} r={10} fill={colors.overburden} />
-          <Label x={140} y={134} text="SHORT · MUD + TRAFFIC" color={colors.danger} />
-          <Label x={140} y={48} text="LONGER · CLEAR · FASTER" color={colors.success} />
+          <Label x={140} y={134} text={t('induction.art.short')} color={colors.danger} />
+          <Label x={140} y={48} text={t('induction.art.longer')} color={colors.success} />
         </G>
       );
     case 'diagram-fuel':
@@ -163,11 +169,11 @@ function renderDiagram(art: ArtId) {
           <Rect x={60} y={40} width={50} height={80} rx={8} fill={colors.surface} />
           <Rect x={68} y={48} width={34} height={64} rx={4} fill={colors.surfaceMuted} />
           <Rect x={68} y={92} width={34} height={20} rx={4} fill={colors.danger} />
-          <Label x={85} y={34} text="FUEL" />
+          <Label x={85} y={34} text={t('induction.art.fuel')} />
           <Line x1={68} y1={80} x2={102} y2={80} stroke={colors.warning} strokeWidth={2} strokeDasharray="4 3" />
-          <Label x={170} y={70} text="REFUEL HERE" color={colors.warning} />
+          <Label x={170} y={70} text={t('induction.art.refuelHere')} color={colors.warning} />
           <Path d="M120 80 L130 76 L130 84 Z" fill={colors.warning} />
-          <Label x={170} y={106} text="TOO LATE" color={colors.danger} />
+          <Label x={170} y={106} text={t('induction.art.tooLate')} color={colors.danger} />
         </G>
       );
     case 'diagram-right-of-way':
@@ -178,8 +184,8 @@ function renderDiagram(art: ArtId) {
           <Rect x={60} y={108} width={22} height={11} rx={3} fill={colors.info} />
           <Circle cx={65} cy={121} r={3} fill={colors.surface} />
           <Circle cx={77} cy={121} r={3} fill={colors.surface} />
-          <Label x={190} y={46} text="LOADED · GOES FIRST" color={colors.success} />
-          <Label x={72} y={98} text="GIVE WAY" color={colors.danger} />
+          <Label x={190} y={46} text={t('induction.art.loadedFirst')} color={colors.success} />
+          <Label x={72} y={98} text={t('induction.art.giveWay')} color={colors.danger} />
         </G>
       );
     default:

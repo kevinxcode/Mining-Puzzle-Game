@@ -7,7 +7,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { Maximize2, Minus, Plus } from 'lucide-react-native';
+import { Box, Map as MapIcon, Maximize2, Minus, Plus } from 'lucide-react-native';
 import Svg, { Circle, Ellipse, G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { hapticSelection } from '@/services/haptics';
@@ -30,6 +30,9 @@ import { MapTerrain } from './map/MapTerrain';
 import { TruckUnit } from './TruckUnit';
 import { useProgression } from '@/state/progressionStore';
 import { ExcavatorUnit } from './ExcavatorUnit';
+import { useT } from '@/i18n';
+import { makeProjection } from './map/projection';
+import { useViewPrefs } from '@/state/viewPrefsStore';
 
 interface GameMapProps {
   level: LevelConfig;
@@ -60,19 +63,32 @@ const sameTarget = (a: DropTarget | null, b: DropTarget | null) =>
       ? a.routeId === (b as { routeId: string }).routeId
       : true);
 
+/** Iso keeps clear of the zoom column (left) and hint/undo buttons (right). */
+const ISO_PAD = 58;
+
 export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, onDropTruck, running = false }: GameMapProps) {
+  const { t, tx } = useT();
   const liveryId = useProgression((s) => s.cosmetics.livery);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const mapView = useViewPrefs((s) => s.mapView);
+  const setMapView = useViewPrefs((s) => s.setMapView);
   const pad = 26;
-  const usable = Math.max(0.01, Math.min(size.width, size.height) - pad * 2);
-  const scale = usable / MAP_SIZE;
-  const originX = (size.width - MAP_SIZE * scale) / 2;
-  const originY = (size.height - MAP_SIZE * scale) / 2;
-
-  const toScreen = useMemo(
-    () => (p: Point): Point => ({ x: originX + p.x * scale, y: originY + p.y * scale }),
-    [originX, originY, scale],
+  // One projection drives terrain, units and drag hit-testing, so both views behave the same.
+  // Iso view fits the site's nodes (plus room for labels) so the diamond fills a portrait screen.
+  const fitPoints = useMemo(() => {
+    const m = 9;
+    return level.map.nodes.flatMap(({ position: { x, y } }) => [
+      { x: x - m, y: y - m },
+      { x: x + m, y: y + m },
+      { x: x - m, y: y + m },
+      { x: x + m, y: y - m },
+    ]);
+  }, [level]);
+  const projection = useMemo(
+    () => makeProjection(mapView, size.width, size.height, MAP_SIZE, mapView === 'iso' ? ISO_PAD : pad, mapView === 'iso' ? fitPoints : undefined),
+    [mapView, size.width, size.height, fitPoints],
   );
+  const { scale, toScreen, depth } = projection;
 
   const roadGeometry = useMemo(
     () =>
@@ -261,6 +277,7 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
           height={size.height}
           scale={scale}
           toScreen={toScreen}
+          view={mapView}
           nodes={level.map.nodes}
           roads={roadGeometry}
         />
@@ -343,25 +360,28 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
         {/* Excavators + trucks: native overlays so motion runs on the UI thread */}
         {level.map.nodes
           .filter((node) => node.type === 'excavator')
+          .sort((a, b) => depth(a.position) - depth(b.position))
           .map((node) => (
             <ExcavatorUnit
               key={node.id}
               position={toScreen(node.position)}
               scale={scale}
               materialColor={getMaterial(node.materialId)?.color ?? colors.mapRock}
-              label={node.name}
+              label={tx(node.name)}
               loading={loadingExcavatorIds.has(node.id)}
               running={running}
             />
           ))}
-        {trucks.map((truck) => (
+        {[...trucks]
+          .sort((a, b) => depth(truckPosition(a, level)) - depth(truckPosition(b, level)))
+          .map((truck) => (
           <TruckUnit
             key={truck.id}
             position={toScreen(truckPosition(truck, level))}
             scale={scale}
             loadFraction={truck.spec.capacity > 0 ? truck.load / truck.spec.capacity : 0}
             state={truck.state}
-            label={truck.spec.name}
+            label={tx(truck.spec.name)}
             selected={truck.id === selectedTruckId}
             running={running}
             showLabel={zoomedIn}
@@ -373,14 +393,26 @@ export function GameMap({ level, trucks, roads, selectedTruckId, onSelectTruck, 
         </Animated.View>
         {/* Zoom controls */}
         <View style={styles.zoomControls} pointerEvents="box-none">
-          <Pressable style={styles.zoomButton} onPress={() => zoomBy(1.5)} accessibilityRole="button" accessibilityLabel="Zoom in" hitSlop={6}>
+          <Pressable style={styles.zoomButton} onPress={() => zoomBy(1.5)} accessibilityRole="button" accessibilityLabel={t('game.map.zoomIn')} hitSlop={6}>
             <Plus size={18} color={colors.textOnDark} />
           </Pressable>
-          <Pressable style={styles.zoomButton} onPress={() => zoomBy(1 / 1.5)} accessibilityRole="button" accessibilityLabel="Zoom out" hitSlop={6}>
+          <Pressable style={styles.zoomButton} onPress={() => zoomBy(1 / 1.5)} accessibilityRole="button" accessibilityLabel={t('game.map.zoomOut')} hitSlop={6}>
             <Minus size={18} color={colors.textOnDark} />
           </Pressable>
-          <Pressable style={styles.zoomButton} onPress={resetCamera} accessibilityRole="button" accessibilityLabel="Reset map view" hitSlop={6}>
+          <Pressable style={styles.zoomButton} onPress={resetCamera} accessibilityRole="button" accessibilityLabel={t('game.map.resetView')} hitSlop={6}>
             <Maximize2 size={16} color={colors.textOnDark} />
+          </Pressable>
+          <Pressable
+            style={styles.zoomButton}
+            onPress={() => {
+              setMapView(mapView === 'iso' ? 'top' : 'iso');
+              resetCamera();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t(mapView === 'iso' ? 'game.map.viewTop' : 'game.map.viewIso')}
+            hitSlop={6}
+          >
+            {mapView === 'iso' ? <MapIcon size={16} color={colors.textOnDark} /> : <Box size={16} color={colors.textOnDark} />}
           </Pressable>
         </View>
         </View>

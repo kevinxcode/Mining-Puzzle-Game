@@ -6,7 +6,7 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CalendarDays, CalendarRange, CheckCircle2, Flame, Infinity as InfinityIcon, Play, Swords, Trophy } from 'lucide-react-native';
+import { CalendarDays, CalendarRange, CheckCircle2, Flame, Infinity as InfinityIcon, Pencil, Play, Swords, Trophy } from 'lucide-react-native';
 import { colors, iconSizes, layout, radius, shadows, spacing, typography } from '@/theme/tokens';
 import { modeRewards } from '@/game/config/rewards';
 import {
@@ -24,9 +24,11 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { playSfx } from '@/services/audio';
 import { formatNumber } from '@/utils/format';
+import { useT } from '@/i18n';
 
 export default function ModesScreen() {
   const router = useRouter();
+  const { t, tx, tn } = useT();
   const modes = useProgression((s) => s.modes);
   const today = localDateKey();
   const daily = buildDailyLevel(today);
@@ -47,7 +49,7 @@ export default function ModesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Play Modes" subtitle="Fresh challenges beyond the campaign" />
+      <ScreenHeader title={t('shell.modes.title')} subtitle={t('shell.modes.subtitle')} />
       <ScrollView contentContainerStyle={styles.content}>
         <FadeInView style={[styles.card, shadows.raised]}>
           <View style={styles.cardHead}>
@@ -55,29 +57,29 @@ export default function ModesScreen() {
               <CalendarDays size={iconSizes.md} color={colors.textOnDark} />
             </View>
             <View style={styles.flex}>
-              <Text style={styles.eyebrow}>DAILY CHALLENGE · {today}</Text>
+              <Text style={styles.eyebrow}>{t('shell.modes.dailyEyebrow', { date: today })}</Text>
               <Text style={styles.title} accessibilityRole="header">
-                {daily.regionName}
+                {tx(daily.regionName)}
               </Text>
             </View>
           </View>
           <Text style={styles.body}>
-            One mission for everyone today: move {daily.targetTons} t in {Math.round(daily.timeLimit / 60)} min.
+            {t('shell.modes.dailyBody', { tons: daily.targetTons, minutes: Math.round(daily.timeLimit / 60) })}
           </Text>
           <View style={styles.stats}>
-            <Stat icon={<Flame size={iconSizes.sm} color={colors.primary} />} label="Streak" value={`${modes.daily.streak} day${modes.daily.streak === 1 ? '' : 's'}`} />
-            <Stat icon={<Trophy size={iconSizes.sm} color={colors.secondary} />} label="Best today" value={bestToday ? formatNumber(bestToday) : '—'} />
+            <Stat icon={<Flame size={iconSizes.sm} color={colors.primary} />} label={t('shell.modes.streak')} value={tn('shell.modes.day_one', 'shell.modes.day_other', modes.daily.streak)} />
+            <Stat icon={<Trophy size={iconSizes.sm} color={colors.secondary} />} label={t('shell.modes.bestToday')} value={bestToday ? formatNumber(bestToday) : '—'} />
           </View>
           {wonToday ? (
             <View style={styles.done}>
               <CheckCircle2 size={iconSizes.sm} color={colors.success} />
-              <Text style={styles.doneText}>Reward collected — replay for a better score or come back tomorrow.</Text>
+              <Text style={styles.doneText}>{t('shell.modes.dailyDone')}</Text>
             </View>
           ) : (
-            <Text style={styles.reward}>Win today: +{dailyReward} coins · +{modeRewards.dailyXp} XP</Text>
+            <Text style={styles.reward}>{t('shell.modes.dailyReward', { coins: dailyReward, xp: modeRewards.dailyXp })}</Text>
           )}
           <PrimaryButton
-            label={wonToday ? 'REPLAY DAILY' : 'PLAY DAILY'}
+            label={t(wonToday ? 'shell.modes.replayDaily' : 'shell.modes.playDaily')}
             icon={<Play size={iconSizes.sm} color={colors.textOnDark} />}
             onPress={() => open(dailyLevelId(today))}
           />
@@ -89,29 +91,29 @@ export default function ModesScreen() {
               <CalendarRange size={iconSizes.md} color={colors.surface} />
             </View>
             <View style={styles.flex}>
-              <Text style={styles.eyebrow}>WEEKLY CHALLENGE · {week}</Text>
+              <Text style={styles.eyebrow}>{t('shell.modes.weeklyEyebrow', { week })}</Text>
               <Text style={styles.title} accessibilityRole="header">
-                {weekly.regionName}
+                {tx(weekly.regionName)}
               </Text>
             </View>
           </View>
           <Text style={styles.body}>
-            A tougher shift that lasts all week: move {weekly.targetTons} t in {Math.round(weekly.timeLimit / 60)} min. Beat your best and share it.
+            {t('shell.modes.weeklyBody', { tons: weekly.targetTons, minutes: Math.round(weekly.timeLimit / 60) })}
           </Text>
           <View style={styles.stats}>
-            <Stat icon={<Trophy size={iconSizes.sm} color={colors.secondary} />} label="Best this week" value={bestThisWeek ? formatNumber(bestThisWeek) : '—'} />
-            <Stat icon={<CheckCircle2 size={iconSizes.sm} color={colors.success} />} label="Weeks won" value={`${modes.weekly.totalWins}`} />
+            <Stat icon={<Trophy size={iconSizes.sm} color={colors.secondary} />} label={t('shell.modes.bestWeek')} value={bestThisWeek ? formatNumber(bestThisWeek) : '—'} />
+            <Stat icon={<CheckCircle2 size={iconSizes.sm} color={colors.success} />} label={t('shell.modes.weeksWon')} value={`${modes.weekly.totalWins}`} />
           </View>
           {wonThisWeek ? (
             <View style={styles.done}>
               <CheckCircle2 size={iconSizes.sm} color={colors.success} />
-              <Text style={styles.doneText}>Weekly reward collected — keep pushing your best score.</Text>
+              <Text style={styles.doneText}>{t('shell.modes.weeklyDone')}</Text>
             </View>
           ) : (
-            <Text style={styles.reward}>Win this week: +{modeRewards.weeklyCoins} coins · +{modeRewards.weeklyXp} XP</Text>
+            <Text style={styles.reward}>{t('shell.modes.weeklyReward', { coins: modeRewards.weeklyCoins, xp: modeRewards.weeklyXp })}</Text>
           )}
           <PrimaryButton
-            label={wonThisWeek ? 'REPLAY WEEKLY' : 'PLAY WEEKLY'}
+            label={t(wonThisWeek ? 'shell.modes.replayWeekly' : 'shell.modes.playWeekly')}
             icon={<Play size={iconSizes.sm} color={colors.textOnDark} />}
             onPress={() => open(weeklyLevelId(week))}
           />
@@ -123,42 +125,58 @@ export default function ModesScreen() {
               <Swords size={iconSizes.md} color={colors.textOnDark} />
             </View>
             <View style={styles.flex}>
-              <Text style={styles.eyebrow}>FRIEND CHALLENGE</Text>
+              <Text style={styles.eyebrow}>{t('shell.modes.friendEyebrow')}</Text>
               <Text style={styles.title} accessibilityRole="header">
-                Beat your crew's best runs
+                {t('shell.modes.friendTitle')}
               </Text>
             </View>
           </View>
           <Text style={styles.body}>
-            Share a finished level as a code in any chat. Friends paste it to watch your run and try to beat it. Works offline.
+            {t('shell.modes.friendBody')}
           </Text>
-          <PrimaryButton label="OPEN FRIEND CHALLENGE" icon={<Swords size={iconSizes.sm} color={colors.textOnDark} />} onPress={() => router.push('/challenge')} />
+          <PrimaryButton label={t('shell.modes.openFriend')} icon={<Swords size={iconSizes.sm} color={colors.textOnDark} />} onPress={() => router.push('/challenge')} />
         </FadeInView>
 
         <FadeInView index={3} style={[styles.card, shadows.raised]}>
+          <View style={styles.cardHead}>
+            <View style={[styles.badge, { backgroundColor: colors.warning }]}>
+              <Pencil size={iconSizes.md} color={colors.textOnDark} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.eyebrow}>{t('editor.entry.eyebrow')}</Text>
+              <Text style={styles.title} accessibilityRole="header">
+                {t('editor.entry.title')}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.body}>{t('editor.entry.body')}</Text>
+          <PrimaryButton label={t('editor.entry.open')} icon={<Pencil size={iconSizes.sm} color={colors.textOnDark} />} onPress={() => router.push('/editor' as never)} />
+        </FadeInView>
+
+        <FadeInView index={4} style={[styles.card, shadows.raised]}>
           <View style={styles.cardHead}>
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
               <InfinityIcon size={iconSizes.md} color={colors.textOnDark} />
             </View>
             <View style={styles.flex}>
-              <Text style={styles.eyebrow}>ENDLESS SHIFT</Text>
+              <Text style={styles.eyebrow}>{t('shell.modes.endlessEyebrow')}</Text>
               <Text style={styles.title} accessibilityRole="header">
-                How long can you keep up?
+                {t('shell.modes.endlessTitle')}
               </Text>
             </View>
           </View>
           <Text style={styles.body}>
-            Every shift raises the target and adds site events. Clear a shift to earn coins and move on.
+            {t('shell.modes.endlessBody')}
           </Text>
           <View style={styles.stats}>
-            <Stat icon={<Trophy size={iconSizes.sm} color={colors.secondary} />} label="Best shift" value={modes.endless.bestShift ? `${modes.endless.bestShift}` : '—'} />
-            <Stat icon={<Flame size={iconSizes.sm} color={colors.primary} />} label="Best tons" value={modes.endless.bestTons ? `${formatNumber(Math.round(modes.endless.bestTons))} t` : '—'} />
+            <Stat icon={<Trophy size={iconSizes.sm} color={colors.secondary} />} label={t('shell.modes.bestShift')} value={modes.endless.bestShift ? `${modes.endless.bestShift}` : '—'} />
+            <Stat icon={<Flame size={iconSizes.sm} color={colors.primary} />} label={t('shell.modes.bestTons')} value={modes.endless.bestTons ? `${formatNumber(Math.round(modes.endless.bestTons))} t` : '—'} />
           </View>
           <Text style={styles.reward}>
-            Shift N pays +{modeRewards.endlessCoinsBase} + {modeRewards.endlessCoinsPerShift}×N coins
+            {t('shell.modes.endlessReward', { base: modeRewards.endlessCoinsBase, perShift: modeRewards.endlessCoinsPerShift })}
           </Text>
           <PrimaryButton
-            label="START SHIFT 1"
+            label={t('shell.modes.startShift')}
             icon={<Play size={iconSizes.sm} color={colors.textOnDark} />}
             onPress={() => open(endlessLevelId(1))}
           />
