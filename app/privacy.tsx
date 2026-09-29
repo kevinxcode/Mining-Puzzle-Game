@@ -19,17 +19,17 @@ const SECTIONS: { title: string; body: string }[] = [
   {
     title: 'What is stored on your device',
     body:
-      'Your game progress, stars, coins, upgrades, statistics, achievements, settings and Site Induction results (including the trainee name you type for the certificate) are saved only in this app’s local storage on your device.',
+      'Your game progress, stars, coins, upgrades, statistics, achievements, settings and Site Induction results (including the trainee name you type for the certificate), your friend-challenge nickname, an imported content pack and a log of the last 10 app errors are saved only in this app’s local storage on your device.',
   },
   {
     title: 'Sharing',
     body:
-      'Data leaves your device only when you choose to share or export it, and you decide where it goes: an induction certificate (PDF) or training report (CSV) with the trainee details you entered; a content pack template with training material only; or a result message or friend challenge code with your nickname, the level and your moves — never your trainee name, employee ID or other progress.',
+      'Data leaves your device only when you choose to share or export it, and you decide where it goes: an induction certificate (PDF) or training report (CSV) with the trainee details you entered; a content pack template with training material only; or a result message or friend challenge code with your nickname, the level and your moves — never your trainee name, employee ID or other progress. If the app shows its error screen, you can also share an error report containing only the error, the screen, the app version and the Android version.',
   },
   {
     title: 'Deleting your data',
     body:
-      'Use Settings → Reset Progress to erase all saved data, or uninstall the app.',
+      'Use Settings → Reset Progress to erase your progress, induction records, nickname and error log (an imported content pack is kept), or uninstall the app to remove everything.',
   },
   {
     title: 'Children',

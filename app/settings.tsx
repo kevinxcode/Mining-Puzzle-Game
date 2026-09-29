@@ -2,6 +2,8 @@
  * Settings — audio, haptics, about and reset (with confirmation).
  */
 
+import { useChallengeStore } from '@/state/challengeStore';
+import { clearCrashLog } from '@/services/crashLog';
 import { useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Constants from 'expo-constants';
@@ -24,13 +26,16 @@ export default function SettingsScreen() {
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   const confirmReset = () => {
-    Alert.alert('Reset Progress', 'This deletes all progress, stars, coins, upgrades and induction records. Continue?', [
+    Alert.alert('Reset Progress', 'This deletes all progress, stars, coins, upgrades, induction records, your nickname and the error log. An imported content pack is kept. Continue?', [
       { text: 'Cancel', style: 'cancel', onPress: () => setResetting(false) },
       {
         text: 'Reset',
         style: 'destructive',
         onPress: () => {
           resetProgress();
+          // Personal data kept outside the save: friend-challenge nickname and error log.
+          useChallengeStore.getState().setNickname('');
+          void clearCrashLog();
           setResetting(false);
         },
       },
